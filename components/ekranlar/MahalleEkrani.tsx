@@ -20,11 +20,11 @@ const KONUM: [number, number][] = [
   [232, 246],
 ];
 function blob(cx: number, cy: number, r: number, tohum: number) {
-  const n = 9;
+  const n = 20;
   let d = '';
   for (let i = 0; i <= n; i++) {
     const a = (i / n) * Math.PI * 2;
-    const rr = r * (0.82 + 0.18 * Math.sin(tohum * 3.1 + i * 1.7));
+    const rr = r * (0.88 + 0.12 * Math.sin(tohum * 3.1 + i * 1.3) + 0.05 * Math.cos(i * 2.7 + tohum));
     const x = cx + Math.cos(a) * rr * 1.25;
     const y = cy + Math.sin(a) * rr;
     d += `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)} `;
@@ -77,7 +77,7 @@ export default function MahalleEkrani() {
                 const sec = i === secili;
                 return (
                   <G key={mh.id} onPress={() => setSecili(i)}>
-                    <Path d={blob(cx, cy, 40, i + 1)} fill={renk} opacity={own ? 0.95 : 0.75} stroke={sec ? '#FFFFFF' : '#0B1220'} strokeWidth={sec ? 3 : 1.5} />
+                    <Path d={blob(cx, cy, 44, i + 1)} fill={renk} opacity={own ? 0.95 : 0.75} stroke={sec ? '#FFFFFF' : '#0B1220'} strokeWidth={sec ? 3 : 1.5} />
                     {own && (
                       <G>
                         <Line x1={cx + 26} y1={cy - 30} x2={cx + 26} y2={cy - 8} stroke="#F8FAFC" strokeWidth="2" />

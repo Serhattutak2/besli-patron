@@ -87,7 +87,7 @@ export default function PatronEkrani() {
                 <Y k style={{ fontSize: 14, color: gecildi || burasi ? R.yazi : R.soluk }}>
                   {x.ad} <Y style={{ fontSize: 11.5, color: R.soluk }}>· {x.ulke}</Y>
                 </Y>
-                {(burasi || gecildi) && <Y style={{ fontSize: 11, color: R.soluk }}>Rakip: {x.karakter.rakip} · Çaycı: {x.karakter.cayci}</Y>}
+                {(burasi || gecildi) && <Y style={{ fontSize: 11, color: R.soluk }}>Rakip: {x.karakter.rakip} · {x.karakter.cayci} · {x.karakter.bekci}</Y>}
               </View>
             </View>
           );
