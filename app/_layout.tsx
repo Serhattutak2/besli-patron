@@ -1,98 +1,54 @@
 // ============================================
-// BEŞLİ PATRON — app/_layout.tsx
-// Kök düzen: yazı tipleri, ses, reklam, oyun durumu, üst bilgi çubuğu
+// SAHA BİZİM — app/_layout.tsx
+// Kök düzen: yazı tipleri, açılış ekranı, oyun durumu
 // ============================================
-import '../utils/hataYakala';
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { enableScreens } from 'react-native-screens';
 import * as SplashScreen from 'expo-splash-screen';
-import { useFonts, SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
-import { GameProvider } from '../context/GameContext';
-import { Colors } from '../constants/colors';
-import Ogretici from '../components/Ogretici';
-import OyunHUD from '../components/OyunHUD';
-import OlayModal from '../components/OlayModal';
-import { sesBaslat } from '../services/soundManager';
-import { reklamlariBaslat } from '../services/adManager';
+import { useFonts, Nunito_600SemiBold, Nunito_800ExtraBold, Nunito_900Black } from '@expo-google-fonts/nunito';
+import { OyunProvider } from '../context/OyunContext';
 
-enableScreens(false);
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
-  state = { hasError: false, error: '' };
-
-  static getDerivedStateFromError(hata: any) {
-    return { hasError: true, error: hata?.message ?? 'Bilinmeyen hata' };
+class HataSiniri extends React.Component<{ children: React.ReactNode }, { hata: string | null }> {
+  state = { hata: null as string | null };
+  static getDerivedStateFromError(e: any) {
+    return { hata: String(e?.message ?? e) };
   }
-
   render() {
-    if (!this.state.hasError) return this.props.children;
+    if (!this.state.hata) return this.props.children;
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Hata Olustu</Text>
-        <Text style={styles.message}>{this.state.error}</Text>
+      <View style={st.hata}>
+        <Text style={st.hataBaslik}>Bir şeyler ters gitti</Text>
+        <Text style={st.hataMetin}>{this.state.hata}</Text>
       </View>
     );
   }
 }
 
-export default function RootLayout() {
-  const [fontlarHazir, fontHatasi] = useFonts({
-    SpaceMono: SpaceMono_400Regular,
-    SpaceMonoBold: SpaceMono_700Bold,
-  });
-
+export default function KokDuzen() {
+  const [hazir, hatali] = useFonts({ Nunito_600SemiBold, Nunito_800ExtraBold, Nunito_900Black });
   useEffect(() => {
-    const zamanlayici = setTimeout(() => SplashScreen.hideAsync(), 3000);
-    if (fontlarHazir || fontHatasi) {
-      SplashScreen.hideAsync();
-      clearTimeout(zamanlayici);
-    }
-    return () => clearTimeout(zamanlayici);
-  }, [fontlarHazir, fontHatasi]);
-
-  useEffect(() => {
-    sesBaslat();
-    reklamlariBaslat();
-  }, []);
-
-  if (!fontlarHazir && !fontHatasi) return null;
-
+    if (hazir || hatali) SplashScreen.hideAsync().catch(() => {});
+  }, [hazir, hatali]);
+  if (!hazir && !hatali) return null;
   return (
-    <ErrorBoundary>
+    <HataSiniri>
       <SafeAreaProvider>
-        <GameProvider>
+        <OyunProvider>
           <StatusBar style="light" />
-          <View style={{ flex: 1, backgroundColor: Colors.background }}>
-            <OyunHUD />
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="intro" />
-              <Stack.Screen name="tabs" />
-              <Stack.Screen name="gameover" />
-              <Stack.Screen name="+not-found" />
-            </Stack>
-          </View>
-          <OlayModal />
-          <Ogretici />
-        </GameProvider>
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0C1424' } }} />
+        </OyunProvider>
       </SafeAreaProvider>
-    </ErrorBoundary>
+    </HataSiniri>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    padding: 24,
-  },
-  title: { fontSize: 22, color: Colors.danger, fontWeight: 'bold', marginBottom: 12 },
-  message: { fontSize: 14, color: Colors.textPrimary, textAlign: 'center' },
+const st = StyleSheet.create({
+  hata: { flex: 1, backgroundColor: '#0C1424', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  hataBaslik: { color: '#F59E0B', fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
+  hataMetin: { color: '#CBD5E1', textAlign: 'center' },
 });

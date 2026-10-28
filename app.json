@@ -1,34 +1,34 @@
 {
   "expo": {
-    "name": "Beşli Patron",
+    "name": "Saha Bizim",
     "slug": "abacusai-mobile-apps",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "scheme": "abacusai1789939013",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sardurtechnologies.beslipatron",
-      "buildNumber": "21",
+      "buildNumber": "22",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#0C1424",
+        "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.sardurtechnologies.beslipatron",
-      "versionCode": 1
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "output": "single"
+      "output": "single",
+      "name": "Saha Bizim",
+      "backgroundColor": "#0C1424"
     },
     "plugins": [
       "expo-router",
@@ -39,6 +39,21 @@
           "androidAppId": "ca-app-pub-4873666267587702~4040896289",
           "iosAppId": "ca-app-pub-4873666267587702~1281504021"
         }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "Bu izin, sana daha alakalı reklamlar göstermek için kullanılır. İzin vermesen de oyun aynen çalışır."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0C1424"
+        }
       ]
     ],
     "extra": {
@@ -46,6 +61,11 @@
       "eas": {
         "projectId": "efb521a5-73f6-4cbd-8357-025593741ce6"
       }
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0C1424"
     }
   }
 }
