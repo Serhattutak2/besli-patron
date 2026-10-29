@@ -2,7 +2,7 @@
 // SAHA BİZİM — constants/reklamKimlikleri.ts
 // AdMob reklam birimi kimlikleri.
 // iOS için AdMob'da "Saha Bizim (iOS)" uygulaması altında ayrı birimler açılmalı
-// ve aşağıdaki IOS_* alanlarına yazılmalı. Boş kalırsa test reklamı kullanılır
+// ve aşağıdaki IOS_* alanlarına yazılmalı. iOS uygulaması: ~7577546538 (App Store 6815316058). Boş kalırsa test reklamı kullanılır
 // (gelir getirmez ama oyun bozulmaz).
 // ============================================
 export const ANDROID_ODULLU = 'ca-app-pub-4873666267587702/1435662670';
