@@ -16,6 +16,7 @@ AD = 'Saha Bizim'
 ALT_BASLIK = {'tr': 'Halısaha patronu ol', 'en': 'Run your five-a-side pitch'}
 SITE = 'https://serhattutak2.github.io'
 GIZLILIK = SITE + '/gizlilik.html'
+DESTEK = SITE + '/destek.html'
 YENI_TR = """Beşli Patron artık SAHA BİZİM!
 
 • 8 şehir, şehre özel hikâyeler ve karakterler
@@ -97,8 +98,8 @@ def main():
     for l in yer:
         loc = l['attributes']['locale']
         try:
-            istek('PATCH', f"/v1/appStoreVersionLocalizations/{l['id']}", json={'data': {'type': 'appStoreVersionLocalizations', 'id': l['id'], 'attributes': {'whatsNew': YENI_TR if dil_tr(loc) else YENI_EN, 'marketingUrl': SITE}}})
-            bilgi(f'{loc}: yenilikler ve pazarlama adresi yazıldı.')
+            istek('PATCH', f"/v1/appStoreVersionLocalizations/{l['id']}", json={'data': {'type': 'appStoreVersionLocalizations', 'id': l['id'], 'attributes': {'whatsNew': YENI_TR if dil_tr(loc) else YENI_EN, 'marketingUrl': SITE, 'supportUrl': DESTEK}}})
+            bilgi(f'{loc}: yenilikler, pazarlama ve destek adresleri yazıldı.')
         except Exception as e:
             print(f'{loc} yazılamadı:', e)
 
