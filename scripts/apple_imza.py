@@ -88,7 +88,7 @@ def main():
 
     derlemeler = istek('GET', f'/v1/builds?filter[app]={ASC_APP_ID}&sort=-uploadedDate&limit=50')['data']
     numaralar = [int(b['attributes']['version']) for b in derlemeler if b['attributes']['version'].isdigit()]
-    yeni_derleme = max(numaralar + [22]) + 1
+    yeni_derleme = max(numaralar + [33]) + 1  # 33 Apple tarafından reddedildi, tekrar kullanılmaz
     bilgi(f'Yeni derleme numarası: {yeni_derleme}')
 
     # --- Paket kimliği

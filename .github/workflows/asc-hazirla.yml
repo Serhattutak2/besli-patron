@@ -16,7 +16,7 @@ jobs:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
       SURUM: '1.1.0'
-      DERLEME: '33'
+      DERLEME: '34'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
