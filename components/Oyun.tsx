@@ -16,6 +16,8 @@ import MahalleEkrani from './ekranlar/MahalleEkrani';
 import KulupEkrani from './ekranlar/KulupEkrani';
 import PatronEkrani from './ekranlar/PatronEkrani';
 import MiniOyun from './MiniOyun';
+import GorevPenceresi from './GorevPenceresi';
+import Kutlama from './Kutlama';
 import { CanliAnPenceresi, GunSonuPenceresi, GeceRaporuPenceresi, HikayePenceresi, SeriPenceresi, Bildirimler, DenemeReklam } from './Pencereler';
 
 type Sekme = 'tesis' | 'program' | 'mahalle' | 'kulup' | 'patron';
@@ -31,6 +33,7 @@ export default function Oyun() {
   const { s, yukleniyor, yap } = useOyun();
   const [sekme, setSekme] = useState<Sekme>('tesis');
   const [mini, setMini] = useState(false);
+  const [gorev, setGorev] = useState(false);
   const ic = useSafeAreaInsets();
 
   if (yukleniyor || !s) {
@@ -44,14 +47,14 @@ export default function Oyun() {
 
   const rozet: Partial<Record<Sekme, string | null>> = {
     program: s.teklifler.length > 0 ? String(s.teklifler.length) : null,
-    mahalle: s.derbi && !s.derbi.hazir && !s.derbi.sonuc ? '!' : null,
+    mahalle: (s.derbi && !s.derbi.hazir && !s.derbi.sonuc) || (s.kupa && !s.kupa.hazir) || (s.final && !s.finalKazanildi) ? '!' : null,
     kulup: s.miniOyunHak > 0 || s.yeniFormalar.length > 0 ? '•' : null,
     patron: M.tasinabilir(s) ? '!' : null,
   };
 
   return (
     <View style={[st.kap, { paddingTop: ic.top }]}>
-      <UstBar />
+      <UstBar onGorev={() => setGorev(true)} />
       <View style={{ flex: 1 }}>
         {sekme === 'tesis' && <TesisEkrani />}
         {sekme === 'program' && <ProgramEkrani />}
@@ -94,6 +97,8 @@ export default function Oyun() {
           }}
         />
       )}
+      {gorev && <GorevPenceresi onKapat={() => setGorev(false)} />}
+      <Kutlama />
       <DenemeReklam />
     </View>
   );

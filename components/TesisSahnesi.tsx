@@ -344,6 +344,23 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
             </G>
           )}
 
+          {/* Vinç: inşaat/yükseltme sürerken */}
+          {saha.insaatBitisDakika != null && (
+            <G>
+              <Rect x="300" y="60" width="6" height="120" fill="#F59E0B" />
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <Line key={i} x1="300" y1={66 + i * 19} x2="306" y2={76 + i * 19} stroke="#92400E" strokeWidth="1" />
+              ))}
+              <G transform={`rotate(${Math.sin(kare / 25) * 8} 303 62)`}>
+                <Rect x="228" y="58" width="96" height="5" fill="#F59E0B" />
+                <Rect x="312" y="63" width="12" height="9" fill="#475569" />
+                <Line x1={250 + Math.sin(kare / 18) * 12} y1="63" x2={250 + Math.sin(kare / 18) * 12} y2={100 + Math.sin(kare / 11) * 8} stroke="#CBD5E1" strokeWidth="1" />
+                <Rect x={244 + Math.sin(kare / 18) * 12} y={100 + Math.sin(kare / 11) * 8} width="12" height="8" fill="#B45309" />
+              </G>
+              <Rect x="296" y="176" width="14" height="6" fill="#475569" />
+            </G>
+          )}
+
           {/* Dev ekran */}
           {M.hizmette(saha) && (saha.yukseltmeler.skorbord ?? 0) > 0 && (
             <G>

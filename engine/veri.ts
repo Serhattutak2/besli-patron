@@ -443,7 +443,7 @@ export const DERBI_IKRAM = [
 
 // ---------- Mahalle ----------
 export const MAHALLE_GUNLUK_BONUS = 450; // sahip olunan mahalle başına (şehir çarpanıyla)
-export const RAKIP_BASKI = 1.6; // fethedilmemiş mahalleye günlük rakip baskısı
+export const RAKIP_BASKI = 2; // fethedilmemiş mahalleye günlük rakip baskısı
 
 // ---------- Hava ----------
 export type HavaTanim = { id: string; ad: string; ikon: string; talep: number; isiticiKoruma: boolean };
@@ -477,3 +477,46 @@ export const GUN_TEMALARI: Record<number, GunTemasi> = {
   5: { ad: 'Şirketler Gecesi', aciklama: 'Ofis ve kurumsal takımlar akşam sahayı istiyor.', ikon: 'briefcase', renk: '#FBBF24', tipCarpan: { ofis: 1.8, kurumsal: 1.8 } },
   6: { ad: 'Hayır Maçı Cumartesisi', aciklama: '15:00\'te hayır maçı: ücret yok ama mahalle seni bağrına basar.', ikon: 'heart', renk: '#F87171' },
 };
+
+// ---------- Günlük görevler ve sezon kartı ----------
+export type GorevSablon = { tur: import('./tipler').GorevTuru; yazi: (h: number) => string; hedefler: number[]; xp: number; nakit: number };
+export const GOREV_HAVUZU: GorevSablon[] = [
+  { tur: 'teklif', yazi: (h) => `${h} teklif kabul et`, hedefler: [4, 6, 8], xp: 15, nakit: 600 },
+  { tur: 'mac', yazi: (h) => `${h} maç oynat`, hedefler: [5, 7, 10], xp: 15, nakit: 600 },
+  { tur: 'gelir', yazi: (h) => `Bugün ${h.toLocaleString('tr-TR')} ₺ kazan`, hedefler: [8000, 12000, 18000], xp: 20, nakit: 800 },
+  { tur: 'bakim', yazi: () => 'Halıya bakım yap', hedefler: [1], xp: 10, nakit: 400 },
+  { tur: 'an', yazi: (h) => `${h} canlı anda karar ver`, hedefler: [1, 2, 3], xp: 15, nakit: 500 },
+  { tur: 'mini', yazi: () => 'Patronun penaltılarını at', hedefler: [1], xp: 10, nakit: 400 },
+  { tur: 'cay', yazi: () => 'Çay ocağının kasasını topla', hedefler: [1], xp: 10, nakit: 300 },
+  { tur: 'yukseltme', yazi: () => 'Bir yükseltme al', hedefler: [1], xp: 20, nakit: 0 },
+  { tur: 'reklam', yazi: (h) => `${h} ödüllü reklam izle`, hedefler: [1, 2], xp: 20, nakit: 500 },
+];
+export const GOREV_HAFTA_HEDEF = 12; // haftada tamamlanan görev → sandık
+export const SEZON_GUN = 28;
+export const SEZON_KADEME_XP = 50;
+export type SezonOdul = { yazi: string; nakit?: number; enerji?: number; itibar?: number; forma?: 0 | 1 | 2; cayDolu?: boolean; yildiz?: boolean };
+export const SEZON_ODULLERI: SezonOdul[] = Array.from({ length: 30 }, (_, i) => {
+  const k = i + 1;
+  if (k % 10 === 0) return { yazi: 'Efsane forma', forma: 2 };
+  if (k % 5 === 0) return { yazi: 'Nadir forma', forma: 1 };
+  if (k % 4 === 0) return { yazi: `+${10 + k} itibar`, itibar: 10 + k };
+  if (k % 3 === 0) return { yazi: '+40 enerji', enerji: 40 };
+  if (k % 7 === 0) return { yazi: 'Çay ocağı dolu', cayDolu: true };
+  return { yazi: `${(1000 + k * 250).toLocaleString('tr-TR')} ₺`, nakit: 1000 + k * 250 };
+});
+
+// ---------- Sözleşmeler ----------
+export const SOZLESME_FIRMA_EKLERI = ['Bankası', 'Sigorta', 'Lojistik', 'Holding', 'Yazılım', 'Hastanesi', 'Enerji', 'İnşaat', 'Telekom'];
+
+// ---------- Kupa ----------
+export const KUPA_ARALIK = 21; // gün
+export const KUPA_ILK = 12;
+export const KUPA_ODUL = [
+  { ad: 'Mahalle kupası', bedel: 3000, itibar: 12, kontrol: 10 },
+  { ad: 'Büyük şehir kupası', bedel: 9000, itibar: 25, kontrol: 18 },
+];
+
+// ---------- Rakip ----------
+export function rakipGucu(sehirSira: number, deneme: number) {
+  return 58 + (sehirSira % 8) * 5 + Math.floor(sehirSira / 8) * 10 - deneme * 3;
+}

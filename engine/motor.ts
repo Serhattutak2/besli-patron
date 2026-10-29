@@ -154,7 +154,7 @@ export function teklifEnerjisi(s: OyunDurumu) {
 }
 
 // ---------- Yeni oyun ----------
-type Kalici = Partial<Pick<OyunDurumu, 'efsaneYildiz' | 'formalar' | 'istatistik' | 'tumZamanKazanc' | 'girisSerisi' | 'sonGirisTarihi' | 'miniOyunRekor' | 'hikayeGoruldu'>>;
+type Kalici = Partial<Pick<OyunDurumu, 'efsaneYildiz' | 'formalar' | 'istatistik' | 'tumZamanKazanc' | 'girisSerisi' | 'sonGirisTarihi' | 'miniOyunRekor' | 'hikayeGoruldu' | 'sezon' | 'kupaSayisi'>>;
 
 export function yeniOyun(sehirSira = 0, kalici: Kalici = {}, simdi = Date.now()): OyunDurumu {
   const sh = SEHIRLER[sehirSira % SEHIRLER.length];
@@ -244,7 +244,16 @@ export function yeniOyun(sehirSira = 0, kalici: Kalici = {}, simdi = Date.now())
     zincirler: [],
     bayraklar: {},
     sonAnlar: [],
+    sozlesme: null,
+    sozlesmeTeklifi: null,
+    kupa: null,
+    kupaSayisi: kalici.kupaSayisi ?? 0,
+    final: null,
+    finalKazanildi: false,
+    gorevler: { gun: 0, liste: [], haftaBas: 1, haftaTamam: 0, haftaSandikAlindi: false },
+    sezon: kalici.sezon ? { ...kalici.sezon, baslangic: 1 } : { no: 1, baslangic: 1, xp: 0, alinan: [] },
   };
+  gorevUret(s);
   haber(s, `${sh.ad} macerası başladı. ${sh.karakter.rakip} seni izliyor.`, 'bilgi');
   teklifUret(s, V.ACILIS_SAATI - 1, 3);
   // ilk gün boş kalmasın: iki garanti teklif
@@ -419,12 +428,28 @@ function macBitir(s: OyunDurumu, r: Rezervasyon) {
   r.skor = [Math.floor(rnd() * 9), Math.floor(rnd() * 9)];
   if (r.derbi) {
     derbiBitir(s, r);
+    gorevIlerlet(s, 'derbi');
     return;
   }
+  if (r.kupa) {
+    kupaMacBitti(s, r);
+    return;
+  }
+  if (r.final) {
+    finalBitti(s, r);
+    return;
+  }
+  if (r.ozel === 'meydan') {
+    meydanBitti(s, r);
+    return;
+  }
+  if (r.sozlesme && !sozlesmeMacBitti(s, r)) return;
+  gorevIlerlet(s, 'mac');
   s.nakit += r.fiyat;
   s.bugunGelir += r.fiyat;
   s.toplamKazanc += r.fiyat;
   s.tumZamanKazanc += r.fiyat;
+  gorevIlerlet(s, 'gelir', s.bugunGelir, true);
   s.bugunMac += 1;
   s.istatistik.mac += 1;
   if (saha) {
@@ -492,7 +517,8 @@ function macBitir(s: OyunDurumu, r: Rezervasyon) {
 
 function kontrolEkle(s: OyunDurumu, mahalleId: string, miktar: number) {
   if (s.mahalleSahip[mahalleId]) return;
-  const yeni = sinirla((s.mahalleKontrol[mahalleId] ?? 0) + miktar, 0, 100);
+  const etkin = miktar > 0 ? miktar * 0.72 : miktar;
+  const yeni = sinirla((s.mahalleKontrol[mahalleId] ?? 0) + etkin, 0, 100);
   s.mahalleKontrol[mahalleId] = yeni;
   if (yeni >= 100) {
     s.mahalleSahip[mahalleId] = true;
@@ -501,7 +527,7 @@ function kontrolEkle(s: OyunDurumu, mahalleId: string, miktar: number) {
     haber(s, `${ad} artık senin! Muhtar her gün destek verecek.`, 'iyi');
     bildir(s, 'mahalle', `${ad} senin oldu!`);
     if (!s.hikayeGoruldu.ilk_mahalle) s.bekleyenHikaye.push('ilk_mahalle');
-    if (Object.values(s.mahalleSahip).every(Boolean)) s.bekleyenHikaye.push(`fetih_${s.sehirId}`);
+    if (Object.values(s.mahalleSahip).every(Boolean) && !s.finalKazanildi && !s.final) finalKur(s);
   }
 }
 
@@ -579,15 +605,17 @@ function etkiUygula(s: OyunDurumu, e: AnEtki, takimId: string, rezId: string) {
   }
   if (e.enerji) s.enerji = sinirla(s.enerji + e.enerji, 0, V.MAKS_ENERJI);
   if (e.itibar) {
-    s.itibar = Math.max(0, s.itibar + e.itibar);
-    s.bugunItibar += e.itibar;
+    const it = e.itibar > 0 ? e.itibar * 0.7 : e.itibar;
+    s.itibar = Math.max(0, s.itibar + it);
+    s.bugunItibar += it;
   }
   const t = takimId && !takimId.startsWith('misafir:') ? takimBul(s, takimId) : null;
   if (e.sevgi && t) s.takimlar[t.id].sevgi = sinirla(s.takimlar[t.id].sevgi + e.sevgi, 0, 100);
   if (e.kontrol) {
     const acik = Object.keys(s.mahalleKontrol).filter((m) => !s.mahalleSahip[m]);
     const m = t && !s.mahalleSahip[t.mahalleId] ? t.mahalleId : acik.length ? sec(acik) : null;
-    if (m) kontrolEkle(s, m, e.kontrol);
+    // hikâye anlarının mahalleye etkisi yumuşatılır (fetih çok hızlanmasın)
+    if (m) kontrolEkle(s, m, e.kontrol > 0 ? e.kontrol * 0.45 : e.kontrol);
   }
   if (e.kalite) {
     const r = s.rezervasyonlar.find((x) => x.id === rezId);
@@ -611,7 +639,10 @@ export function anCevapla(onceki: OyunDurumu, secim: number | null, basarili = t
   const sc = secim == null ? an.sessiz : an.secenekler[secim];
   const kullan = sc.oyun && !basarili && sc.basarisiz ? sc.basarisiz : sc;
   etkiUygula(s, kullan.etki, ca.takimId, ca.rezId);
-  if (secim != null) s.istatistik.anCevap += 1;
+  if (secim != null) {
+    s.istatistik.anCevap += 1;
+    gorevIlerlet(s, 'an');
+  }
   const sonuc = metinDoldur(s, kullan.sonuc, ca.takimId);
   bildir(s, secim == null || (sc.oyun && !basarili) ? 'kotu' : an.nadir ? 'para' : 'an', sonuc);
   if (an.nadir || an.takip) haber(s, `${metinDoldur(s, an.baslik, ca.takimId)} ${sonuc}`, 'iyi');
@@ -634,6 +665,7 @@ export function teklifKabul(onceki: OyunDurumu, teklifId: string): Sonuc {
   s.enerji -= enerji;
   s.teklifler = s.teklifler.filter((x) => x.id !== teklifId);
   s.rezervasyonlar.push({ id: yeniId('r'), takimId: t.takimId, sahaId: saha.id, saat: t.saat, fiyat: t.fiyat, abone: false, durum: 'bekliyor', ozel: t.ozel });
+  gorevIlerlet(s, 'teklif');
   return { s, mesaj: `${takimAdi(s, t.takimId)} ${V.saatYazi(t.saat)}'da geliyor.` };
 }
 
@@ -670,6 +702,7 @@ export function bakimYap(onceki: OyunDurumu, sahaId: string): Sonuc {
   s.nakit -= m;
   s.enerji -= V.BAKIM_ENERJI;
   sh.kalite = Math.min(maksKalite(sh), sh.kalite + V.BAKIM_ARTIS);
+  gorevIlerlet(s, 'bakim');
   return { s, mesaj: 'Halı tarandı, çizgiler yenilendi.' };
 }
 
@@ -692,6 +725,7 @@ export function yukseltmeAl(onceki: OyunDurumu, sahaId: string, id: string): Son
   s.nakit -= m;
   s.enerji -= y.enerji;
   sh.yukseltmeler[id] = (sh.yukseltmeler[id] ?? 0) + 1;
+  gorevIlerlet(s, 'yukseltme');
   return { s, mesaj: `${y.ad} kuruldu!` };
 }
 
@@ -741,6 +775,7 @@ export function cayTopla(onceki: OyunDurumu): Sonuc {
   s.toplamKazanc += m;
   s.tumZamanKazanc += m;
   s.cayBirikim = 0;
+  gorevIlerlet(s, 'cay');
   return { s, mesaj: `Çay ocağından ${para(m)} toplandı.` };
 }
 
@@ -996,7 +1031,7 @@ export function yeniGun(onceki: OyunDurumu, simdi = Date.now()): OyunDurumu {
   s.derbi = null;
   s.hava = havaSec(s.sehirId, new Date(simdi));
   // Rakip baskısı
-  const baski = Math.max(0.3, V.RAKIP_BASKI * (1 + s.sehirSira * 0.12) - s.itibar / 1500);
+  const baski = Math.max(0.9, V.RAKIP_BASKI * (1 + s.sehirSira * 0.12) - Math.min(0.8, s.itibar / 2500));
   for (const m of Object.keys(s.mahalleKontrol)) {
     if (!s.mahalleSahip[m]) s.mahalleKontrol[m] = Math.max(0, s.mahalleKontrol[m] - baski);
   }
@@ -1015,6 +1050,11 @@ export function yeniGun(onceki: OyunDurumu, simdi = Date.now()): OyunDurumu {
     });
   }
   if (hg === 0 && s.sahalar.some(hizmette)) derbiKur(s);
+  sozlesmeGunu(s);
+  kupaGunu(s);
+  finalGunu(s);
+  if (s.gun - s.sezon.baslangic >= V.SEZON_GUN) sezonYenile(s);
+  gorevUret(s);
   const etk = bugununEtkinligi(new Date(simdi));
   haber(s, `${s.gun}. gün, ${V.GUN_ADLARI[hg]}: ${gunTemasi(s).ad}. Hava: ${V.HAVALAR[s.hava].ad}.`, 'bilgi');
   ozelTeklifler(s);
@@ -1037,7 +1077,15 @@ function ozelTeklifler(s: OyunDurumu) {
 function rakipHamlesi(s: OyunDurumu) {
   const sh = sehir(s);
   const r = rnd();
-  if (r < 0.4) {
+  if (r < 0.25 && s.sahalar.some(hizmette)) {
+    const saha = bosSaha(s, 22, null) ?? bosSaha(s, 21, null);
+    if (saha) {
+      s.teklifler.push({ id: yeniId('t'), takimId: `misafir:${sh.karakter.rakipSaha} SK`, saat: acikSaatler(saha).includes(22) ? 22 : 21, fiyat: 0, bitisDakika: 20 * 60, ozel: 'meydan' });
+      haber(s, `${sh.karakter.rakip} meydan okudu: "Takımım bu akşam senin sahanda seni yener!"`, 'kotu');
+      return;
+    }
+  }
+  if (r < 0.45) {
     s.rakipEtki = { carpan: 0.8, bitisGun: s.gun + 2, metin: `${sh.karakter.rakip} fiyat kırdı! 3 gün boyunca müşterin azalacak.` };
     haber(s, s.rakipEtki.metin, 'kotu');
   } else if (r < 0.7) {
@@ -1074,7 +1122,7 @@ export function iflasSonrasi(onceki: OyunDurumu): OyunDurumu {
 }
 
 // ---------- Şehir değiştirme ----------
-export const tasinabilir = (s: OyunDurumu) => Object.values(s.mahalleSahip).every(Boolean);
+export const tasinabilir = (s: OyunDurumu) => Object.values(s.mahalleSahip).every(Boolean) && s.finalKazanildi;
 export function kazanilacakYildiz(s: OyunDurumu) {
   return 1 + Math.floor(s.toplamKazanc / 400000);
 }
@@ -1148,6 +1196,7 @@ export function miniOyunSonuc(onceki: OyunDurumu, gol: number): Sonuc {
   s.nakit += Math.round(gol * 350 * c);
   s.itibar += gol;
   s.miniOyunRekor = Math.max(s.miniOyunRekor, gol);
+  gorevIlerlet(s, 'mini');
   let mesaj = `${gol} gol! +${para(gol * 350 * c)}, +${gol} itibar.`;
   if (gol >= 3) {
     s.miniOyunSeri += 1;
@@ -1229,6 +1278,7 @@ export function reklamOdulu(onceki: OyunDurumu, tur: ReklamTuru, hedef?: string)
   s.bugunReklam[tur] = (s.bugunReklam[tur] ?? 0) + 1;
   s.bugunReklam.__gun = (s.bugunReklam.__gun ?? 0) + 1;
   s.bugunReklamToplam += 1;
+  gorevIlerlet(s, 'reklam');
   const c = maliyetCarpan(s);
   let mesaj = '';
   switch (tur) {
@@ -1295,6 +1345,14 @@ export function hikayeMetni(s: OyunDurumu, anahtar: string): { baslik: string; s
   const sh = sehir(s);
   if (anahtar.startsWith('giris_')) return { baslik: `${sh.ad}`, satirlar: sh.giris };
   if (anahtar.startsWith('fetih_')) return { baslik: `${sh.ad} fethedildi!`, satirlar: [sh.fetihMesaji, 'Patron sekmesinden yeni şehre taşınabilirsin. Efsane yıldızların seninle gelir.'] };
+  if (anahtar.startsWith('final_'))
+    return {
+      baslik: 'Büyük Final!',
+      satirlar: [
+        `Bütün mahalleler senin. ${sh.karakter.rakip} son kozunu oynuyor: "${sh.karakter.rakipSaha}'nın takımı ile senin karma takımın kapışsın. Kazanan ${sh.ad}'ı alır!"`,
+        'Final iki gün sonra 21:00\'de. Mahalle sekmesinden hazırlık yap: yıldız transfer et, kampa gir, taraftar otobüsü kaldır.',
+      ],
+    };
   if (anahtar === 'ilk_mahalle')
     return { baslik: 'İlk mahallen!', satirlar: [`${sh.karakter.muhtar} elini sıktı: "Artık bizim sahamız burası."`, `Her gün muhtar desteği kasaya girecek. Yeni saha arsaları da açılıyor.`] };
   if (anahtar === 'ilk_abone')
@@ -1326,6 +1384,34 @@ export function eskiKayittanHediye(eski: any): { nakit: number; itibar: number }
 // ---------- Deneme (test) modu ----------
 // Sadece deneme sürümünde görünen panelin kullandığı kısayollar.
 export const TEST = {
+  kupaBaslat(o: OyunDurumu): OyunDurumu {
+    const s = kopya(o);
+    const takimlar = tumTakimlar(sehir(s)).map((t) => t.id).sort(() => rnd() - 0.5).slice(0, 8);
+    s.kupa = { baslangic: s.gun, odul: 0, hazir: false, takimlar, turlar: [], bitti: false };
+    return s;
+  },
+  sozlesmeTeklif(o: OyunDurumu): OyunDurumu {
+    const s = kopya(o);
+    s.sozlesme = null;
+    s.sozlesmeTeklifi = null;
+    const gun = s.gun;
+    s.gun = Math.max(gun, 4);
+    for (let i = 0; i < 200 && !s.sozlesmeTeklifi; i++) sozlesmeGunu(s);
+    s.gun = gun;
+    return s;
+  },
+  finalBaslat(o: OyunDurumu): OyunDurumu {
+    const s = kopya(o);
+    for (const m of sehir(s).mahalleler) {
+      s.mahalleKontrol[m.id] = 100;
+      s.mahalleSahip[m.id] = true;
+    }
+    s.finalKazanildi = false;
+    finalKur(s);
+    s.final!.gun = s.gun;
+    finalGunu(s);
+    return s;
+  },
   paraDoldur(o: OyunDurumu): OyunDurumu {
     const s = kopya(o);
     s.nakit = Math.max(s.nakit, 50_000_000);
@@ -1420,4 +1506,391 @@ export function anSureUzat(onceki: OyunDurumu, ms: number): OyunDurumu {
   const s = kopya(onceki);
   s.canliAn!.bitisZamani = Date.now() + ms;
   return s;
+}
+
+// ======================================================================
+// 2. ETAP: görevler, sezon kartı, sözleşmeler, kupa, büyük final, meydan okuma
+// ======================================================================
+
+// ---------- Günlük görevler ----------
+function gorevUret(s: OyunDurumu) {
+  if (s.gorevler.gun === s.gun) return;
+  if (s.gun - s.gorevler.haftaBas >= 7) {
+    s.gorevler.haftaBas = s.gun;
+    s.gorevler.haftaTamam = 0;
+    s.gorevler.haftaSandikAlindi = false;
+  }
+  const havuz = [...V.GOREV_HAVUZU].filter((g) => (g.tur === 'cay' ? s.cayOcagi > 0 : true)).sort(() => rnd() - 0.5).slice(0, 3);
+  const zorluk = s.gun < 5 ? 0 : s.gun < 15 ? 1 : 2;
+  const c = maliyetCarpan(s);
+  s.gorevler.gun = s.gun;
+  s.gorevler.liste = havuz.map((g) => {
+    const idx = Math.min(g.hedefler.length - 1, Math.floor(rnd() * (zorluk + 1)));
+    const hedef = g.tur === 'gelir' ? Math.round((g.hedefler[idx] * c * (1 + s.sahalar.filter(hizmette).length * 0.4)) / 500) * 500 : g.hedefler[idx];
+    return { id: yeniId('g'), tur: g.tur, hedef, ilerleme: 0, xp: g.xp + idx * 5, nakit: Math.round(g.nakit * c * (1 + idx * 0.5)), alindi: false };
+  });
+}
+/** deger: eklenecek miktar ya da (ayarla=true ise) yeni değer */
+function gorevIlerlet(s: OyunDurumu, tur: import('./tipler').GorevTuru, deger = 1, ayarla = false) {
+  if (!s.gorevler) return;
+  for (const g of s.gorevler.liste) {
+    if (g.tur !== tur || g.alindi) continue;
+    const once = g.ilerleme;
+    g.ilerleme = Math.min(g.hedef, ayarla ? Math.max(g.ilerleme, deger) : g.ilerleme + deger);
+    if (once < g.hedef && g.ilerleme >= g.hedef) bildir(s, 'gorev', `Görev tamam: ${gorevYazi(g)}. Ödülünü al!`);
+  }
+}
+export function gorevYazi(g: { tur: string; hedef: number }) {
+  const sab = V.GOREV_HAVUZU.find((x) => x.tur === g.tur);
+  return sab ? sab.yazi(g.hedef) : g.tur;
+}
+export function gorevAl(onceki: OyunDurumu, id: string): Sonuc {
+  const g = onceki.gorevler.liste.find((x) => x.id === id);
+  if (!g || g.alindi || g.ilerleme < g.hedef) return hata(onceki, 'Görev henüz tamamlanmadı.');
+  const s = kopya(onceki);
+  const gg = s.gorevler.liste.find((x) => x.id === id)!;
+  gg.alindi = true;
+  s.nakit += gg.nakit;
+  s.sezon.xp += gg.xp;
+  s.gorevler.haftaTamam += 1;
+  return { s, mesaj: `+${gg.xp} sezon puanı${gg.nakit ? `, +${para(gg.nakit)}` : ''}` };
+}
+export const haftaSandigiHazir = (s: OyunDurumu) => s.gorevler.haftaTamam >= V.GOREV_HAFTA_HEDEF && !s.gorevler.haftaSandikAlindi;
+export function haftaSandigiAc(onceki: OyunDurumu): Sonuc {
+  if (!haftaSandigiHazir(onceki)) return hata(onceki, 'Sandık için görevleri tamamla.');
+  const s = kopya(onceki);
+  s.gorevler.haftaSandikAlindi = true;
+  const m = Math.round(5000 * maliyetCarpan(s));
+  s.nakit += m;
+  s.sezon.xp += 40;
+  const f = formaVer(s, 1);
+  return { s, mesaj: `Haftalık sandık: +${para(m)}, +40 sezon puanı${f ? `, ${f}` : ''}` };
+}
+export const gorevBekleyen = (s: OyunDurumu) => (s.gorevler?.liste ?? []).filter((g) => !g.alindi && g.ilerleme >= g.hedef).length + (haftaSandigiHazir(s) ? 1 : 0) + sezonAlinabilir(s).length;
+
+// ---------- Sezon kartı ----------
+export const sezonKademe = (s: OyunDurumu) => Math.min(V.SEZON_ODULLERI.length, Math.floor(s.sezon.xp / V.SEZON_KADEME_XP));
+export function sezonAlinabilir(s: OyunDurumu): number[] {
+  const r: number[] = [];
+  for (let k = 1; k <= sezonKademe(s); k++) if (!s.sezon.alinan.includes(k)) r.push(k);
+  return r;
+}
+export function sezonOdulAl(onceki: OyunDurumu, kademe: number): Sonuc {
+  if (!sezonAlinabilir(onceki).includes(kademe)) return hata(onceki, 'Bu kademe henüz açılmadı.');
+  const s = kopya(onceki);
+  const o = V.SEZON_ODULLERI[kademe - 1];
+  const c = maliyetCarpan(s);
+  if (o.nakit) s.nakit += Math.round(o.nakit * c);
+  if (o.enerji) s.enerji = Math.min(V.MAKS_ENERJI, s.enerji + o.enerji);
+  if (o.itibar) s.itibar += o.itibar;
+  if (o.cayDolu && s.cayOcagi > 0) s.cayBirikim = V.CAY_SAATLIK * s.cayOcagi * c * V.CAY_DEPO_SAAT * 3;
+  if (o.cayDolu && s.cayOcagi === 0) s.nakit += Math.round(3000 * c);
+  let ek = '';
+  if (o.forma != null) ek = formaVer(s, o.forma) ?? '';
+  s.sezon.alinan.push(kademe);
+  return { s, mesaj: `Sezon ödülü (${kademe}. kademe): ${o.yazi}${ek ? ` · ${ek}` : ''}` };
+}
+function sezonYenile(s: OyunDurumu) {
+  // alınmamış ödüller otomatik verilir
+  for (const k of sezonAlinabilir(s)) {
+    const o = V.SEZON_ODULLERI[k - 1];
+    if (o.nakit) s.nakit += Math.round(o.nakit * maliyetCarpan(s));
+    if (o.itibar) s.itibar += o.itibar;
+    if (o.forma != null) formaVer(s, o.forma);
+  }
+  s.sezon = { no: s.sezon.no + 1, baslangic: s.gun, xp: 0, alinan: [] };
+  haber(s, `${s.sezon.no}. sezon başladı! Yeni sezon kartı açıldı.`, 'iyi');
+  bildir(s, 'gorev', `${s.sezon.no}. sezon başladı!`);
+}
+
+// ---------- Sözleşmeler ----------
+function sozlesmeGunu(s: OyunDurumu) {
+  const sh = sehir(s);
+  if (s.sozlesme) {
+    const sz = s.sozlesme;
+    const saha = bosSaha(s, sz.saat, 'kurumsal');
+    if (!saha) {
+      sozlesmeBoz(s, 'O saatte boş saha bulunamadı');
+    } else {
+      s.rezervasyonlar.push({ id: yeniId('r'), takimId: `misafir:${sz.firma}`, sahaId: saha.id, saat: sz.saat, fiyat: sz.ucret, abone: false, sozlesme: true, durum: 'bekliyor' });
+    }
+  }
+  if (s.sozlesmeTeklifi && s.sozlesmeTeklifi.gunSayisi < 0) s.sozlesmeTeklifi = null;
+  if (!s.sozlesme && !s.sozlesmeTeklifi && s.gun >= 4 && rnd() < 0.2 && s.sahalar.some(hizmette)) {
+    const ana = [...s.sahalar].filter(hizmette).sort((a, b) => b.kalite - a.kalite)[0];
+    const saat = sec([19, 20, 21]);
+    const gunSayisi = sec([7, 10]);
+    const ucret = yuvarla50(macFiyati(s, ana, 'kurumsal', saat) * 1.15);
+    const minKalite = Math.min(maksKalite(ana) - 0.5, Math.max(4.5, Math.round(ana.kalite * 2) / 2));
+    s.sozlesmeTeklifi = {
+      id: yeniId('s'),
+      firma: `${sh.ad} ${sec(V.SOZLESME_FIRMA_EKLERI)}`,
+      saat,
+      gunSayisi,
+      kalanGun: gunSayisi,
+      ucret,
+      bonus: Math.round((ucret * gunSayisi * 0.6) / 100) * 100,
+      ceza: Math.round((ucret * gunSayisi * 0.35) / 100) * 100,
+      minKalite,
+    };
+    haber(s, `${s.sozlesmeTeklifi.firma} uzun dönem sözleşme teklif etti!`, 'iyi');
+    bildir(s, 'sozlesme', `Yeni sözleşme teklifi: ${s.sozlesmeTeklifi.firma}`);
+  }
+}
+function sozlesmeBoz(s: OyunDurumu, neden: string) {
+  if (!s.sozlesme) return;
+  const sz = s.sozlesme;
+  s.nakit -= sz.ceza;
+  s.itibar = Math.max(0, s.itibar - 8);
+  haber(s, `${sz.firma} sözleşmesi bozuldu (${neden}). Ceza: ${para(sz.ceza)}`, 'kotu');
+  bildir(s, 'kotu', `Sözleşme bozuldu: -${para(sz.ceza)}`);
+  s.sozlesme = null;
+}
+/** false dönerse maç geliri işlenmez */
+function sozlesmeMacBitti(s: OyunDurumu, r: Rezervasyon): boolean {
+  const sz = s.sozlesme;
+  if (!sz) return true;
+  const saha = s.sahalar.find((x) => x.id === r.sahaId);
+  if (saha && saha.kalite < sz.minKalite) {
+    sozlesmeBoz(s, `halı kalitesi ${sz.minKalite}'in altına düştü`);
+    return true;
+  }
+  sz.kalanGun -= 1;
+  if (sz.kalanGun <= 0) {
+    s.nakit += sz.bonus;
+    s.toplamKazanc += sz.bonus;
+    s.tumZamanKazanc += sz.bonus;
+    s.itibar += 10;
+    haber(s, `${sz.firma} sözleşmesi başarıyla bitti! Bonus: ${para(sz.bonus)}`, 'iyi');
+    bildir(s, 'para', `Sözleşme tamam! +${para(sz.bonus)}`);
+    if (rnd() < 0.5) formaVer(s, 0);
+    s.sozlesme = null;
+  }
+  return true;
+}
+export function sozlesmeKabul(onceki: OyunDurumu): Sonuc {
+  if (!onceki.sozlesmeTeklifi) return hata(onceki, 'Teklif yok.');
+  if (onceki.sozlesme) return hata(onceki, 'Zaten bir sözleşmen var.');
+  const s = kopya(onceki);
+  s.sozlesme = s.sozlesmeTeklifi;
+  s.sozlesmeTeklifi = null;
+  const sz = s.sozlesme!;
+  // bugün de oynansın
+  if (!s.gunBitti && suankiSaat(s) < sz.saat) {
+    const saha = bosSaha(s, sz.saat, 'kurumsal');
+    if (saha) s.rezervasyonlar.push({ id: yeniId('r'), takimId: `misafir:${sz.firma}`, sahaId: saha.id, saat: sz.saat, fiyat: sz.ucret, abone: false, sozlesme: true, durum: 'bekliyor' });
+  }
+  return { s, mesaj: `${sz.firma} ile ${sz.gunSayisi} günlük sözleşme imzalandı!` };
+}
+export function sozlesmeReddet(onceki: OyunDurumu): OyunDurumu {
+  const s = kopya(onceki);
+  s.sozlesmeTeklifi = null;
+  return s;
+}
+export function sozlesmeIptal(onceki: OyunDurumu): Sonuc {
+  if (!onceki.sozlesme) return hata(onceki, 'Sözleşme yok.');
+  const s = kopya(onceki);
+  s.rezervasyonlar = s.rezervasyonlar.filter((r) => !(r.sozlesme && r.durum === 'bekliyor'));
+  sozlesmeBoz(s, 'sen iptal ettin');
+  return { s };
+}
+
+// ---------- Mahalle kupası ----------
+function kupaGunu(s: OyunDurumu) {
+  const k = s.kupa;
+  if (k && !k.bitti) {
+    const gunFark = s.gun - k.baslangic;
+    if (!k.hazir) {
+      if (gunFark >= 1) {
+        s.kupa = null;
+        haber(s, 'Kupa organizasyonu yapılmadı, takımlar hayal kırıklığına uğradı.', 'kotu');
+      }
+      return;
+    }
+    const tur = gunFark - 1; // 0 çeyrek, 1 yarı, 2 final
+    if (tur < 0 || tur > 2) return;
+    if (!k.turlar[tur]) {
+      const onceki = tur === 0 ? null : k.turlar[tur - 1];
+      const katilan = tur === 0 ? k.takimlar : (onceki ?? []).map((m) => m.kazanan!).filter(Boolean);
+      const eslesmeler: import('./tipler').Kupa['turlar'][number] = [];
+      for (let i = 0; i + 1 < katilan.length; i += 2) eslesmeler.push({ a: katilan[i], b: katilan[i + 1] });
+      k.turlar[tur] = eslesmeler;
+    }
+    const saatler = tur === 0 ? [17, 18, 19, 20] : tur === 1 ? [19, 20] : [21];
+    k.turlar[tur].forEach((m, i) => {
+      const saat = saatler[i];
+      const saha = [...s.sahalar].filter((x) => hizmette(x) && acikSaatler(x).includes(saat)).sort((a, b) => (b.yukseltmeler.tribun ?? 0) - (a.yukseltmeler.tribun ?? 0))[0];
+      if (!saha) return;
+      s.rezervasyonlar = s.rezervasyonlar.filter((r) => !(r.sahaId === saha.id && r.saat === saat));
+      const bilet = Math.round(900 * maliyetCarpan(s) * (1 + 0.5 * (saha.yukseltmeler.tribun ?? 0)) * (tur === 2 ? 2 : 1));
+      s.rezervasyonlar.push({ id: yeniId('k'), takimId: m.a, sahaId: saha.id, saat, fiyat: bilet, abone: false, kupa: { tur, esleme: i }, durum: 'bekliyor' });
+    });
+    haber(s, tur === 2 ? 'Bu akşam KUPA FİNALİ!' : tur === 1 ? 'Bugün kupada yarı final günü.' : 'Kupa başladı: çeyrek final maçları bugün.', 'bilgi');
+    return;
+  }
+  if (s.gun >= V.KUPA_ILK && (s.gun - V.KUPA_ILK) % V.KUPA_ARALIK === 0 && s.sahalar.some(hizmette)) {
+    const takimlar = tumTakimlar(sehir(s))
+      .map((t) => t.id)
+      .sort((a, b) => s.takimlar[b].sevgi - s.takimlar[a].sevgi)
+      .slice(0, 8)
+      .sort(() => rnd() - 0.5);
+    s.kupa = { baslangic: s.gun, odul: 0, hazir: false, takimlar, turlar: [], bitti: false };
+    haber(s, 'Mahalleler kupa istiyor! Bugün organizasyonu onaylarsan yarından itibaren 3 günlük kupa başlar.', 'bilgi');
+    bildir(s, 'kupa', 'Mahalle kupası düzenlemek ister misin?');
+  }
+}
+export function kupaHazirla(onceki: OyunDurumu, seviye: 1 | 2): Sonuc {
+  const k = onceki.kupa;
+  if (!k || k.hazir || k.bitti) return hata(onceki, 'Kupa yok.');
+  const o = V.KUPA_ODUL[seviye - 1];
+  const bedel = Math.round(o.bedel * maliyetCarpan(onceki));
+  if (onceki.nakit < bedel) return hata(onceki, `Ödül havuzu için ${para(bedel)} gerekli.`);
+  const s = kopya(onceki);
+  s.nakit -= bedel;
+  s.kupa!.odul = seviye;
+  s.kupa!.hazir = true;
+  for (const t of s.kupa!.takimlar) if (s.takimlar[t]) s.takimlar[t].sevgi = sinirla(s.takimlar[t].sevgi + 5, 0, 100);
+  return { s, mesaj: `${o.ad} ilan edildi! Yarın çeyrek final.` };
+}
+export function kupaVazgec(onceki: OyunDurumu): OyunDurumu {
+  const s = kopya(onceki);
+  s.kupa = null;
+  return s;
+}
+function kupaMacBitti(s: OyunDurumu, r: Rezervasyon) {
+  const k = s.kupa;
+  if (!k || !r.kupa) return;
+  const m = k.turlar[r.kupa.tur]?.[r.kupa.esleme];
+  if (!m) return;
+  s.nakit += r.fiyat;
+  s.bugunGelir += r.fiyat;
+  s.toplamKazanc += r.fiyat;
+  s.tumZamanKazanc += r.fiyat;
+  s.bugunMac += 1;
+  const ga = s.takimlar[m.a]?.sevgi ?? 50;
+  const gb = s.takimlar[m.b]?.sevgi ?? 50;
+  const aKazanir = rnd() < 0.5 + (ga - gb) / 300;
+  let sa = Math.floor(rnd() * 5);
+  let sb = Math.floor(rnd() * 5);
+  if (aKazanir && sa <= sb) sa = sb + 1;
+  if (!aKazanir && sb <= sa) sb = sa + 1;
+  m.skor = [sa, sb];
+  m.kazanan = aKazanir ? m.a : m.b;
+  r.skor = [sa, sb];
+  for (const t of [m.a, m.b]) if (s.takimlar[t]) s.takimlar[t].sevgi = sinirla(s.takimlar[t].sevgi + 3, 0, 100);
+  if (s.takimlar[m.kazanan]) s.takimlar[m.kazanan].sevgi = sinirla(s.takimlar[m.kazanan].sevgi + 4, 0, 100);
+  if (r.kupa.tur === 2) {
+    k.sampiyon = m.kazanan;
+    k.bitti = true;
+    s.kupaSayisi += 1;
+    const o = V.KUPA_ODUL[Math.max(0, k.odul - 1)];
+    s.itibar += o.itibar;
+    s.bugunItibar += o.itibar;
+    const t = takimBul(s, m.kazanan);
+    if (t) kontrolEkle(s, t.mahalleId, o.kontrol);
+    if (rnd() < 0.6) formaVer(s, k.odul === 2 ? 1 : 0);
+    haber(s, `KUPA ŞAMPİYONU: ${takimAdi(s, m.kazanan)}! ${t ? mahalleAdi(s, t.mahalleId) : ''} sokaklara döküldü.`, 'iyi');
+    bildir(s, 'kupa', `Kupa şampiyonu: ${takimAdi(s, m.kazanan)}!`);
+  } else {
+    bildir(s, 'kupa', `Kupa: ${takimAdi(s, m.kazanan)} tur atladı (${sa}-${sb})`);
+  }
+}
+
+// ---------- Büyük final ----------
+function finalKur(s: OyunDurumu) {
+  s.final = { gun: s.gun + 2, hazirlik: { yildiz: false, kamp: false, taraftar: false }, deneme: 0 };
+  s.bekleyenHikaye.push(`final_${s.sehirId}`);
+  haber(s, `${sehir(s).karakter.rakip} seni BÜYÜK FİNALE çağırdı! Kazanan şehri alır.`, 'bilgi');
+}
+function finalGunu(s: OyunDurumu) {
+  if (!s.final && !s.finalKazanildi && Object.values(s.mahalleSahip).every(Boolean)) finalKur(s);
+  const f = s.final;
+  if (!f || f.gun !== s.gun || s.finalKazanildi) return;
+  const saha = [...s.sahalar].filter(hizmette).sort((a, b) => (b.tip === 'arena' ? 1 : 0) - (a.tip === 'arena' ? 1 : 0) || (b.yukseltmeler.tribun ?? 0) - (a.yukseltmeler.tribun ?? 0))[0];
+  if (!saha) return;
+  s.rezervasyonlar = s.rezervasyonlar.filter((r) => !(r.sahaId === saha.id && r.saat === 21));
+  s.rezervasyonlar.push({ id: yeniId('f'), takimId: `misafir:${sehir(s).karakter.rakipSaha} SK`, sahaId: saha.id, saat: 21, fiyat: 0, abone: false, final: true, durum: 'bekliyor' });
+  haber(s, 'BU AKŞAM BÜYÜK FİNAL! Saat 21:00.', 'bilgi');
+}
+export function benimGucum(s: OyunDurumu): number {
+  const f = s.final;
+  let g = 40 + Math.min(30, s.itibar / 40) + s.formalar.length * 0.3 + s.efsaneYildiz * 2 + takimGucuEk(s);
+  if (f?.hazirlik.yildiz) g += 8;
+  if (f?.hazirlik.kamp) g += 5;
+  if (f?.hazirlik.taraftar) g += 4;
+  return Math.round(g);
+}
+/** 3. etap: kendi takımın gücü (yoksa 0) */
+export function takimGucuEk(s: OyunDurumu): number {
+  const t = (s as any).takim as { oyuncular?: { guc: number }[] } | undefined;
+  if (!t?.oyuncular?.length) return 0;
+  const enIyi = [...t.oyuncular].sort((a, b) => b.guc - a.guc).slice(0, 5);
+  return Math.round(enIyi.reduce((x, o) => x + o.guc, 0) / enIyi.length / 5);
+}
+export function finalKazanmaSansi(s: OyunDurumu): number {
+  const fark = benimGucum(s) - V.rakipGucu(s.sehirSira, s.final?.deneme ?? 0);
+  return 1 / (1 + Math.exp(-fark / 6));
+}
+export function finalHazirlik(onceki: OyunDurumu, tur: 'yildiz' | 'kamp' | 'taraftar'): Sonuc {
+  const f = onceki.final;
+  if (!f || f.hazirlik[tur]) return hata(onceki, 'Bu hazırlık yapıldı.');
+  const c = maliyetCarpan(onceki);
+  const bedel = tur === 'yildiz' ? 8000 * c : tur === 'taraftar' ? 3000 * c : 0;
+  if (onceki.nakit < bedel) return hata(onceki, `${para(bedel)} gerekli.`);
+  if (tur === 'kamp' && onceki.enerji < 30) return hata(onceki, '30 enerji gerekli.');
+  const s = kopya(onceki);
+  s.nakit -= bedel;
+  if (tur === 'kamp') s.enerji -= 30;
+  s.final!.hazirlik[tur] = true;
+  const yazi = { yildiz: 'Eski bir yıldız takıma katıldı!', kamp: 'Takım kampa girdi, herkes formda.', taraftar: 'Otobüsler tutuldu, tribünler dolacak!' }[tur];
+  return { s, mesaj: yazi };
+}
+function finalBitti(s: OyunDurumu, r: Rezervasyon) {
+  const f = s.final;
+  if (!f) return;
+  const kazandik = rnd() < finalKazanmaSansi(s);
+  let a = 1 + Math.floor(rnd() * 4);
+  let b = Math.floor(rnd() * 4);
+  if (kazandik && a <= b) a = b + 1;
+  if (!kazandik && b <= a) b = a + 1;
+  r.skor = [a, b];
+  f.sonuc = { kazandik, skor: [a, b] };
+  const gelir = Math.round(6000 * maliyetCarpan(s) * (f.hazirlik.taraftar ? 1.6 : 1));
+  s.nakit += gelir;
+  s.bugunGelir += gelir;
+  s.toplamKazanc += gelir;
+  s.tumZamanKazanc += gelir;
+  if (kazandik) {
+    s.finalKazanildi = true;
+    s.itibar += 30;
+    s.bugunItibar += 30;
+    formaVer(s, 2);
+    haber(s, `BÜYÜK FİNALİ KAZANDIN (${a}-${b})! ${sehir(s).ad} artık tamamen senin.`, 'iyi');
+    bildir(s, 'kupa', `ŞAMPİYON! Final ${a}-${b}`);
+    s.bekleyenHikaye.push(`fetih_${s.sehirId}`);
+  } else {
+    f.deneme += 1;
+    f.gun = s.gun + 3;
+    f.hazirlik = { yildiz: false, kamp: false, taraftar: false };
+    s.itibar = Math.max(0, s.itibar - 5);
+    haber(s, `Finali ${a}-${b} kaybettin. ${sehir(s).karakter.rakip} rövanşı 3 gün sonra kabul etti.`, 'kotu');
+    bildir(s, 'kotu', `Final kaybedildi (${a}-${b}). Rövanş 3 gün sonra!`);
+  }
+}
+
+// ---------- Rakip meydan okuması ----------
+function meydanBitti(s: OyunDurumu, r: Rezervasyon) {
+  const p = 1 / (1 + Math.exp(-(benimGucum(s) - (V.rakipGucu(s.sehirSira, 0) - 8)) / 6));
+  const kazandik = rnd() < p;
+  let a = Math.floor(rnd() * 5);
+  let b = Math.floor(rnd() * 5);
+  if (kazandik && a <= b) a = b + 1;
+  if (!kazandik && b <= a) b = a + 1;
+  r.skor = [a, b];
+  const acik = Object.keys(s.mahalleKontrol).filter((m) => !s.mahalleSahip[m]).sort(() => rnd() - 0.5).slice(0, 2);
+  for (const m of acik) kontrolEkle(s, m, kazandik ? 6 : -4);
+  s.itibar = Math.max(0, s.itibar + (kazandik ? 6 : -2));
+  const rk = sehir(s).karakter.rakip;
+  haber(s, kazandik ? `${rk}'in takımını ${a}-${b} yendin! Mahalleler sana yöneldi.` : `${rk}'in takımı ${b}-${a} kazandı. Mahallede dedikodu var.`, kazandik ? 'iyi' : 'kotu');
+  bildir(s, kazandik ? 'mahalle' : 'kotu', kazandik ? `Meydan okumayı kazandın: ${a}-${b}` : `Meydan okumayı kaybettin: ${a}-${b}`);
 }

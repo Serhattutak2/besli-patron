@@ -23,6 +23,7 @@ export default function ProgramEkrani() {
 
   return (
     <ScrollView contentContainerStyle={st.icerik} showsVerticalScrollIndicator={false}>
+      <SozlesmeKarti />
       <Kart>
         <Baslik ikon="call" sag={<Rozet yazi={`Kabul: ${enerji}⚡`} renk={R.sari} />}>
           Gelen teklifler
@@ -75,14 +76,17 @@ export default function ProgramEkrani() {
                       <Y style={{ fontSize: 11, color: R.mat }}>boş</Y>
                     </View>
                   );
-                const renk = r.derbi ? R.turuncu : r.abone ? R.pembe : r.takimId.startsWith('misafir:') ? R.mavi : R.yesil;
+                const renk = r.derbi || r.final || r.ozel === 'meydan' ? R.turuncu : r.kupa ? R.sari : r.sozlesme ? R.sari : r.abone ? R.pembe : r.takimId.startsWith('misafir:') ? R.mavi : R.yesil;
+                const kupaM = r.kupa ? s.kupa?.turlar[r.kupa.tur]?.[r.kupa.esleme] : null;
+                const ad = r.derbi ? 'DERBİ' : r.final ? 'BÜYÜK FİNAL' : kupaM ? `${M.takimAdi(s, kupaM.a).split(' ')[0]} - ${M.takimAdi(s, kupaM.b).split(' ')[0]}` : M.takimAdi(s, r.takimId);
+                const alt = r.kupa ? ['Kupa çeyrek', 'Kupa yarı', 'KUPA FİNALİ'][r.kupa.tur] : r.final ? 'rakiple' : r.ozel === 'meydan' ? 'meydan okuma' : r.ozel === 'dugun' ? 'düğün maçı' : r.ozel === 'hayir' ? 'hayır maçı' : r.sozlesme ? 'sözleşme' : r.derbi ? 'Pazar derbisi' : M.para(r.fiyat);
                 return (
                   <View key={x.id} style={[st.hucre, { backgroundColor: renk + '22', borderColor: renk + '88' }]}>
                     <Y k style={{ fontSize: 11, color: R.yazi }} numberOfLines={1}>
-                      {r.derbi ? 'DERBİ' : M.takimAdi(s, r.takimId)}
+                      {ad}
                     </Y>
                     <Y style={{ fontSize: 10, color: renk }}>
-                      {r.durum === 'oynaniyor' ? 'oynanıyor' : r.durum === 'bitti' ? `${r.skor?.[0]}-${r.skor?.[1]}` : r.derbi ? 'Pazar derbisi' : M.para(r.fiyat)}
+                      {r.durum === 'oynaniyor' ? 'oynanıyor' : r.durum === 'bitti' ? `${r.skor?.[0]}-${r.skor?.[1]}` : alt}
                     </Y>
                   </View>
                 );
@@ -148,6 +152,9 @@ function TeklifKarti({ t }: { t: Teklif }) {
 
 const st = StyleSheet.create({
   icerik: { padding: 12, paddingBottom: 30 },
+  uyari: { flexDirection: 'row', alignItems: 'center', marginTop: 8, borderWidth: 1, borderColor: R.kirmizi, borderRadius: 10, padding: 8 },
+  sozIzgara: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  bilgi: { width: '48.5%', backgroundColor: R.kart, borderRadius: 10, padding: 8 },
   satir: { flexDirection: 'row', alignItems: 'center' },
   teklif: { backgroundColor: R.kart, borderRadius: 16, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: R.cizgi },
   ikon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
@@ -155,3 +162,61 @@ const st = StyleSheet.create({
   suAn: { backgroundColor: '#3A2A0E' },
   hucre: { flex: 1, marginLeft: 4, minHeight: 34, borderRadius: 8, backgroundColor: R.arka, borderWidth: 1, borderColor: R.cizgi, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
 });
+
+function SozlesmeKarti() {
+  const { s, yap } = useOyun();
+  if (!s) return null;
+  const t = s.sozlesmeTeklifi;
+  const sz = s.sozlesme;
+  if (!t && !sz) return null;
+  if (sz) {
+    const saha = s.sahalar.filter(M.hizmette).sort((a, b) => b.kalite - a.kalite)[0];
+    const risk = saha && saha.kalite < sz.minKalite + 0.6;
+    return (
+      <Kart vurgu={R.sari}>
+        <Baslik ikon="document-text" sag={<Rozet yazi={`${sz.gunSayisi - sz.kalanGun}/${sz.gunSayisi} gün`} renk={R.sari} />}>
+          Sözleşme: {sz.firma}
+        </Baslik>
+        <Cubuk oran={(sz.gunSayisi - sz.kalanGun) / sz.gunSayisi} renk={R.sari} />
+        <Y style={{ fontSize: 12.5, color: R.yazi2, marginTop: 8, lineHeight: 18 }}>
+          Her gün {V.saatYazi(sz.saat)}'da {M.para(sz.ucret)}. Bitince bonus {M.para(sz.bonus)}. Halı kalitesi {sz.minKalite}'in altına düşerse sözleşme bozulur, ceza {M.para(sz.ceza)}.
+        </Y>
+        {risk && (
+          <View style={st.uyari}>
+            <Ionicons name="warning" size={15} color={R.kirmizi} />
+            <Y k style={{ fontSize: 12, color: R.kirmizi, marginLeft: 6, flex: 1 }}>Halı kalitesi sınıra yakın! Bakım yap.</Y>
+          </View>
+        )}
+        <Buton kucuk tur="cizgi" style={{ marginTop: 10 }} yazi={`Sözleşmeyi bozdur (ceza ${M.para(sz.ceza)})`} onPress={() => yap((d) => M.sozlesmeIptal(d))} />
+      </Kart>
+    );
+  }
+  return (
+    <Kart vurgu={R.sari}>
+      <Baslik ikon="document-text" sag={<Rozet yazi="YENİ TEKLİF" renk={R.sari} />}>
+        {t!.firma}
+      </Baslik>
+      <Y style={{ fontSize: 13, color: R.yazi2, lineHeight: 19 }}>
+        "{t!.gunSayisi} gün boyunca her akşam {V.saatYazi(t!.saat)} bizim olsun. Sahanız iyi bakımlı kalsın yeter."
+      </Y>
+      <View style={st.sozIzgara}>
+        <Bilgi e="Maç başı" d={M.para(t!.ucret)} />
+        <Bilgi e="Bitiş bonusu" d={M.para(t!.bonus)} renk={R.yesil} />
+        <Bilgi e="En düşük kalite" d={`${t!.minKalite}`} />
+        <Bilgi e="Bozulursa ceza" d={M.para(t!.ceza)} renk={R.kirmizi} />
+      </View>
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+        <Buton kucuk tur="cizgi" yazi="Reddet" style={{ flex: 1 }} onPress={() => yap((d) => M.sozlesmeReddet(d))} />
+        <Buton kucuk tur="ana" ikon="create" yazi="İmzala" style={{ flex: 2 }} onPress={() => yap((d) => M.sozlesmeKabul(d))} />
+      </View>
+    </Kart>
+  );
+}
+function Bilgi({ e, d, renk }: { e: string; d: string; renk?: string }) {
+  return (
+    <View style={st.bilgi}>
+      <Y style={{ fontSize: 10.5, color: R.soluk }}>{e}</Y>
+      <Y s style={{ fontSize: 14, color: renk ?? R.yazi }}>{d}</Y>
+    </View>
+  );
+}

@@ -29,11 +29,14 @@ export type Rezervasyon = {
   abone: boolean;
   derbi?: boolean;
   ozel?: OzelMac;
+  sozlesme?: boolean;
+  kupa?: { tur: number; esleme: number };
+  final?: boolean;
   durum: 'bekliyor' | 'oynaniyor' | 'bitti';
   skor?: [number, number];
 };
 
-export type OzelMac = 'dugun' | 'hayir';
+export type OzelMac = 'dugun' | 'hayir' | 'meydan';
 
 export type Teklif = {
   id: string;
@@ -180,4 +183,46 @@ export type OyunDurumu = {
   zincirler: { an: string; gun: number }[]; // bekleyen hikâye devamları
   bayraklar: Record<string, boolean>; // kalıcı hatıralar
   sonAnlar: string[]; // tekrarı önlemek için son görülen anlar
+  sozlesme: Sozlesme | null;
+  sozlesmeTeklifi: Sozlesme | null;
+  kupa: Kupa | null;
+  kupaSayisi: number;
+  final: BuyukFinal | null;
+  finalKazanildi: boolean;
+  gorevler: GunlukGorevler;
+  sezon: SezonKarti;
 };
+
+export type Sozlesme = {
+  id: string;
+  firma: string;
+  saat: number;
+  gunSayisi: number;
+  kalanGun: number;
+  ucret: number; // maç başı
+  bonus: number;
+  ceza: number;
+  minKalite: number;
+};
+
+export type Kupa = {
+  baslangic: number; // ilan edildiği gün
+  odul: 0 | 1 | 2; // ödül havuzu seviyesi (0 = henüz seçilmedi)
+  hazir: boolean;
+  takimlar: string[]; // 8 takım
+  turlar: { a: string; b: string; kazanan?: string; skor?: [number, number] }[][]; // çeyrek, yarı, final
+  sampiyon?: string;
+  bitti: boolean;
+};
+
+export type BuyukFinal = {
+  gun: number;
+  hazirlik: { yildiz: boolean; kamp: boolean; taraftar: boolean };
+  sonuc?: { kazandik: boolean; skor: [number, number] };
+  deneme: number;
+};
+
+export type GorevTuru = 'teklif' | 'mac' | 'gelir' | 'bakim' | 'an' | 'mini' | 'cay' | 'yukseltme' | 'reklam' | 'derbi' | 'abone';
+export type Gorev = { id: string; tur: GorevTuru; hedef: number; ilerleme: number; xp: number; nakit: number; alindi: boolean };
+export type GunlukGorevler = { gun: number; liste: Gorev[]; haftaBas: number; haftaTamam: number; haftaSandikAlindi: boolean };
+export type SezonKarti = { no: number; baslangic: number; xp: number; alinan: number[] };

@@ -312,7 +312,7 @@ export function SeriPenceresi() {
 }
 
 // ---------- Bildirimler ----------
-const BILDIRIM_RENK: Record<string, string> = { hata: R.kirmizi, iyi: R.yesil, para: R.sari, mahalle: R.turuncu, forma: R.mavi, abone: R.pembe, kotu: R.kirmizi, an: R.mavi, derbi: R.turuncu, insaat: R.turuncu };
+const BILDIRIM_RENK: Record<string, string> = { hata: R.kirmizi, iyi: R.yesil, para: R.sari, mahalle: R.turuncu, forma: R.mavi, abone: R.pembe, kotu: R.kirmizi, an: R.mavi, derbi: R.turuncu, insaat: R.turuncu, gorev: R.mor, sozlesme: R.sari, kupa: R.sari };
 export function Bildirimler() {
   const { bildirimler, bildirimKapat } = useOyun();
   if (bildirimler.length === 0) return null;
