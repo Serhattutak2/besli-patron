@@ -71,5 +71,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#0C1424"
     }
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-4873666267587702~4040896289",
+    "ios_app_id": "ca-app-pub-4873666267587702~7577546538",
+    "user_tracking_usage_description": "Bu izin, sana daha alakalı reklamlar göstermek için kullanılır. İzin vermesen de oyun aynen çalışır."
   }
 }

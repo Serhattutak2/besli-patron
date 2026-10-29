@@ -85,6 +85,15 @@ jobs:
           npx --yes eas-cli@latest build --platform ios --profile production --local --non-interactive --output "$PWD/SahaBizim.ipa" 2>&1 | tee eas-derleme.log
           ls -la SahaBizim.ipa
 
+      - name: IPA dosyasını sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SahaBizim-ipa
+          path: SahaBizim.ipa
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: App Store Connect'e yükle
         run: |
           echo "yükleme başlıyor" > eas-gonderim.log
@@ -100,7 +109,10 @@ jobs:
           print('anahtar yazıldı')
           PY
           ls -la SahaBizim.ipa >> eas-gonderim.log 2>&1 || { echo "ipa bulunamadı:" >> eas-gonderim.log; find . -name '*.ipa' -maxdepth 3 >> eas-gonderim.log; exit 1; }
-          if xcrun altool --upload-app -f SahaBizim.ipa -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" >> eas-gonderim.log 2>&1; then
+          KID=$(printf '%s' "$ASC_KEY_ID" | tr -d '[:space:]')
+          ISS=$(printf '%s' "$ASC_ISSUER_ID" | tr -d '[:space:]')
+          ls ~/.appstoreconnect/private_keys >> eas-gonderim.log 2>&1
+          if xcrun altool --upload-app -f SahaBizim.ipa -t ios --apiKey "$KID" --apiIssuer "$ISS" >> eas-gonderim.log 2>&1; then
             echo "altool ile yüklendi" >> eas-gonderim.log
           else
             echo "--- altool başarısız, EAS submit deneniyor ---" >> eas-gonderim.log
