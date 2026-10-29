@@ -1,0 +1,25 @@
+# SAHA BİZİM — App Store mağaza sayfasını (metinler + ekran görüntüleri) günceller
+# 'magaza-guncelle' dalına gönderimde veya Actions sekmesinden elle çalışır. İncelemeye göndermez.
+name: Mağaza sayfasını güncelle
+
+on:
+  push:
+    branches: [magaza-guncelle]
+  workflow_dispatch:
+
+jobs:
+  guncelle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pyjwt cryptography requests
+      - name: Mağaza sayfasını güncelle
+        run: python scripts/asc_magaza.py

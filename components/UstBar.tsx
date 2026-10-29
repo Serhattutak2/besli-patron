@@ -94,7 +94,7 @@ export default function UstBar({ onGorev }: { onGorev?: () => void }) {
       <View style={st.alt}>
         <View style={[st.kutu, yeniPara && { backgroundColor: '#14532D' }]}>
           <Ionicons name="cash" size={15} color={R.yesil} />
-          <Y s style={{ fontSize: 14, marginLeft: 4, color: s.nakit < 0 ? R.kirmizi : yeniPara ? '#86EFAC' : R.yazi }} numberOfLines={1}>
+          <Y s style={{ flexShrink: 1, fontSize: 14, marginLeft: 4, color: s.nakit < 0 ? R.kirmizi : yeniPara ? '#86EFAC' : R.yazi }} numberOfLines={1}>
             {M.para(nakit)}
           </Y>
         </View>
@@ -134,7 +134,7 @@ const st = StyleSheet.create({
   hizBtn: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 9, minWidth: 30, alignItems: 'center' },
   hizSecili: { backgroundColor: R.turuncu },
   alt: { flexDirection: 'row', marginTop: 7, gap: 6 },
-  kutu: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: R.panel, borderRadius: 11, paddingHorizontal: 8, paddingVertical: 6, borderWidth: 1, borderColor: 'transparent' },
-  gorev: { flex: 0, width: 40, justifyContent: 'center', paddingHorizontal: 0 },
+  kutu: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', backgroundColor: R.panel, borderRadius: 11, paddingHorizontal: 8, paddingVertical: 6, borderWidth: 1, borderColor: 'transparent' },
+  gorev: { flexGrow: 0, flexShrink: 0, flexBasis: 40, width: 40, justifyContent: 'center', paddingHorizontal: 0 },
   rozet: { position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: R.kirmizi, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
 });

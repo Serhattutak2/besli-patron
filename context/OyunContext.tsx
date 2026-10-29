@@ -11,6 +11,8 @@ import * as Kayit from '../engine/kayit';
 import { odulluGoster, gecisGoster, reklamlariBaslat } from '../services/reklam';
 import { TEST_MODU } from '../constants/ayar';
 import { efekt } from '../services/ses';
+import * as V from '../engine/veri';
+import { ayarDegistir } from '../services/ayarlar';
 
 export type Bildirim = { id: number; tur: string; metin: string };
 
@@ -35,6 +37,22 @@ const sonucMu = (x: any): x is M.Sonuc => !!x && typeof x === 'object' && 's' in
 
 export function OyunProvider({ children }: { children: React.ReactNode }) {
   const [s, setS] = useState<OyunDurumu | null>(null);
+  // Mağaza ekran görüntüleri için (yalnızca EXPO_PUBLIC_VITRIN=1 web derlemesinde)
+  useEffect(() => {
+    if (process.env.EXPO_PUBLIC_VITRIN !== '1') return;
+    (globalThis as any).__vitrin = {
+      M,
+      V,
+      ayarDegistir,
+      yap: (f: (d: OyunDurumu) => OyunDurumu | void) =>
+        setS((x) => {
+          if (!x) return x;
+          const d = JSON.parse(JSON.stringify(x));
+          return (f(d) as OyunDurumu) || d;
+        }),
+      durum: () => s,
+    };
+  });
   const [yukleniyor, setYukleniyor] = useState(true);
   const [bildirimler, setBildirimler] = useState<Bildirim[]>([]);
   const [reklamOynuyor, setReklamOynuyor] = useState(false);
