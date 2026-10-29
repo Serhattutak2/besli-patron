@@ -1,0 +1,25 @@
+# SAHA BİZİM — App Store Connect sürüm sayfasını hazırlar (incelemeye göndermez)
+# 'asc-hazirla' dalına gönderimde veya Actions sekmesinden elle çalışır.
+name: App Store sayfasını hazırla
+
+on:
+  push:
+    branches: [asc-hazirla]
+  workflow_dispatch:
+
+jobs:
+  hazirla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pyjwt cryptography requests
+      - name: Sürüm sayfasını hazırla
+        run: python scripts/asc_surum.py

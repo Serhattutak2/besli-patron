@@ -114,5 +114,11 @@ jobs:
             echo "::error title=$f::$ozet"
           done
 
+      - name: App Store sayfasını hazırla
+        env:
+          SURUM: ${{ steps.imza.outputs.surum }}
+          DERLEME: ${{ steps.imza.outputs.derleme }}
+        run: python scripts/asc_surum.py
+
       - name: Özet
         run: echo "::notice::Sürüm ${{ steps.imza.outputs.surum }} (derleme ${{ steps.imza.outputs.derleme }}) App Store Connect'e yüklendi. İşlenmesi 10-30 dakika sürer."
