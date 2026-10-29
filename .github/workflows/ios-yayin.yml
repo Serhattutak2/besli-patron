@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   derle:
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     timeout-minutes: 240
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -71,15 +71,23 @@ jobs:
       - name: Expo projesini bağla
         run: npx --yes eas-cli@latest init --non-interactive --force
 
-      - name: iOS derle (EAS)
+      - name: Xcode sürümü
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_16.4*.app 2>/dev/null | head -1 || xcode-select -p)" || true
+          xcodebuild -version
+
+      - name: iOS derle (GitHub Mac makinesinde)
         run: |
           set -o pipefail
-          npx --yes eas-cli@latest build --platform ios --profile production --non-interactive --wait 2>&1 | tee eas-derleme.log
+          npx --yes eas-cli@latest build --platform ios --profile production --local --non-interactive --output "$PWD/SahaBizim.ipa" 2>&1 | tee eas-derleme.log
+          ls -la SahaBizim.ipa
 
       - name: App Store Connect'e yükle
         run: |
           set -o pipefail
-          npx --yes eas-cli@latest submit --platform ios --profile production --latest --non-interactive --wait 2>&1 | tee eas-gonderim.log
+          mkdir -p ~/.appstoreconnect/private_keys
+          cp imza/asc.p8 ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          xcrun altool --upload-app -f SahaBizim.ipa -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" 2>&1 | tee eas-gonderim.log
 
       - name: Hata özeti
         if: failure()
