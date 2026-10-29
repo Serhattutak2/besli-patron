@@ -84,17 +84,23 @@ jobs:
 
       - name: App Store Connect'e yükle
         run: |
-          set -o pipefail
           mkdir -p ~/.appstoreconnect/private_keys
           cp imza/asc.p8 ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
-          xcrun altool --upload-app -f SahaBizim.ipa -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" 2>&1 | tee eas-gonderim.log
+          ls -la SahaBizim.ipa imza/ > eas-gonderim.log 2>&1
+          if xcrun altool --upload-app -f SahaBizim.ipa -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" >> eas-gonderim.log 2>&1; then
+            echo "altool ile yüklendi" >> eas-gonderim.log
+          else
+            echo "--- altool başarısız, EAS submit deneniyor ---" >> eas-gonderim.log
+            npx --yes eas-cli@latest submit --platform ios --profile production --path SahaBizim.ipa --non-interactive --wait >> eas-gonderim.log 2>&1
+          fi
+          tail -5 eas-gonderim.log
 
       - name: Hata özeti
         if: failure()
         run: |
-          for f in eas-derleme.log eas-gonderim.log; do
-            [ -f "$f" ] || continue
-            ozet=$(sed -r 's/\x1B\[[0-9;]*[mK]//g' "$f" | grep -v '^\s*$' | grep -v 'Uploading to EAS Build\|Compressing project\|Node.js v20\|without version control\|Expo Go\|EAS_BUILD_NO_EXPO_GO\|environment' | tail -60 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+          for f in eas-gonderim.log eas-derleme.log; do
+            [ -f "$f" ] || { echo "::error title=$f::dosya yok"; continue; }
+            ozet=$(tr '\r' '\n' < "$f" | sed -r 's/\x1B\[[0-9;]*[A-Za-z]//g' | grep -v '^\s*$' | grep -iv 'Executing\|Compiling\|Copying\|Building\|Running script\|Touching\|Processing\|Generating\|Linking\|Signing ' | tail -45 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
             echo "::error title=$f::$ozet"
           done
 
