@@ -23,5 +23,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install pyjwt cryptography requests
+      - name: Durum
+        run: python scripts/asc_durum.py
       - name: Sürüm sayfasını hazırla
         run: python scripts/asc_surum.py
