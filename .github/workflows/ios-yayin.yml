@@ -103,7 +103,12 @@ jobs:
             echo "--- altool başarısız, EAS submit deneniyor ---" >> eas-gonderim.log
             npx --yes eas-cli@latest submit --platform ios --profile production --path SahaBizim.ipa --non-interactive --wait >> eas-gonderim.log 2>&1
           fi
-          tail -5 eas-gonderim.log
+          # altool bazen hata verse de 0 döner: çıktıyı her durumda göster, hata kelimesi varsa durdur
+          ozet=$(tr '\r' '\n' < eas-gonderim.log | grep -v '^\s*$' | tail -40 | awk '{gsub(/%/,"%25"); printf "%s%%0A", $0}')
+          echo "::notice title=Yükleme çıktısı::$ozet"
+          if grep -qiE 'ERROR ITMS|error:|failed|\*\*\* Error' eas-gonderim.log && ! grep -qi 'UPLOAD SUCCEEDED\|No errors uploading\|Submitted your app' eas-gonderim.log; then
+            echo "::error::Yükleme sırasında Apple hata döndürdü (yukarıdaki çıktıya bak)"; exit 1
+          fi
 
       - name: Hata özeti
         if: failure()
