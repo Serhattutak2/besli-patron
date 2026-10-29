@@ -10,6 +10,7 @@ import * as M from '../engine/motor';
 import * as V from '../engine/veri';
 import { R, Y, Cubuk } from './ui';
 import { TEST_MODU } from '../constants/ayar';
+import { efekt } from '../services/ses';
 
 /** Sayı değişince yumuşakça sayarak ilerler */
 function useSayac(hedef: number) {
@@ -18,6 +19,7 @@ function useSayac(hedef: number) {
   useEffect(() => {
     const bas = ref.current;
     const fark = hedef - bas;
+    if (fark >= 200) efekt('para');
     if (Math.abs(fark) < 1) {
       ref.current = hedef;
       setDeger(hedef);

@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { useOyun } from '../context/OyunContext';
 import * as V from '../engine/veri';
 import { R, Y } from './ui';
+import { efekt } from '../services/ses';
 
 const SIRA = ['Yeni patron', 'Mahallenin tanıdığı', 'Sözü dinlenen', 'Semtin abisi', 'Şehrin patronu', 'Halısaha kralı'];
 
@@ -28,6 +29,7 @@ export default function Kutlama() {
       don.setValue(0);
       Animated.spring(a, { toValue: 1, useNativeDriver: true, friction: 5 }).start();
       Animated.loop(Animated.timing(don, { toValue: 1, duration: 4000, easing: Easing.linear, useNativeDriver: true })).start();
+      efekt('fanfar');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       const t = setTimeout(() => setUnvan(null), 4200);
       onceki.current = yeni;

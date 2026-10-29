@@ -13,7 +13,6 @@ import Svg, {
   Ellipse,
   Line,
   G,
-  Text as SvgText,
   Defs,
   LinearGradient,
   RadialGradient,
@@ -23,6 +22,8 @@ import Svg, {
 import type { OyunDurumu, Saha, Rezervasyon } from '../engine/tipler';
 import * as M from '../engine/motor';
 import { TAKIM_TIPLERI, CIM_SECENEK, TABELA_SECENEK, BAYRAK_SECENEK } from '../engine/veri';
+import { efekt } from '../services/ses';
+import SvgText from './SvgYazi';
 
 type Props = {
   durum: OyunDurumu;
@@ -209,6 +210,7 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
     if (aktifRez?.id !== oncekiRez.current) {
       oncekiRez.current = aktifRez?.id ?? null;
       setMac(yeniMac());
+      if (aktifRez && !kucuk) efekt('duduk');
     }
   }, [aktifRez?.id]);
 
@@ -217,7 +219,12 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
     if (!hareketli) return;
     const z = setInterval(() => {
       setKare((k) => k + 1);
-      if (oynuyor && !durum.duraklat && !durum.canliAn) setMac((m) => macAdim(m));
+      if (oynuyor && !durum.duraklat && !durum.canliAn)
+        setMac((m) => {
+          const y = macAdim(m);
+          if (y.gol === 30 && m.gol !== 30) efekt('alkis');
+          return y;
+        });
     }, 70);
     return () => clearInterval(z);
   }, [hareketli, oynuyor, durum.duraklat, !!durum.canliAn]);
@@ -371,7 +378,7 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
               <Rect x="16" y="64" width="54" height="34" rx="3" fill="#0B1220" stroke="#475569" strokeWidth="1.5" />
               <Rect x="40" y="98" width="4" height="22" fill="#475569" />
               <SvgText x="43" y="80" fontSize="11" fontWeight="bold" fill="#FCD34D" textAnchor="middle">
-                {oynuyor ? `${mac.skor[0]} - ${mac.skor[1]}` : M.sehir(durum).ad.toUpperCase().slice(0, 8)}
+                {oynuyor ? `${mac.skor[0]} - ${mac.skor[1]}` : M.sehir(durum).ad.toLocaleUpperCase('tr-TR').slice(0, 8)}
               </SvgText>
               <SvgText x="43" y="92" fontSize="6" fill="#94A3B8" textAnchor="middle">
                 {sponsorlar[Math.floor(kare / 40) % sponsorlar.length]}

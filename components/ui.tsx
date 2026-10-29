@@ -6,7 +6,10 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, ViewStyle, TextStyle, StyleProp } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path, Circle, Rect, Ellipse, G, Text as SvgText } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, Ellipse, G } from 'react-native-svg';
+import { efekt } from '../services/ses';
+import { cevirCocuk, useDil } from '../i18n';
+import SvgText from './SvgYazi';
 
 export const R = {
   arka: '#0C1424',
@@ -38,6 +41,8 @@ export const F = {
 } as const;
 
 export function Y({ style, children, k, s, numberOfLines }: { style?: StyleProp<TextStyle>; children: React.ReactNode; k?: boolean; s?: boolean; numberOfLines?: number }) {
+  useDil();
+  children = cevirCocuk(children);
   return (
     <Text numberOfLines={numberOfLines} style={[{ color: R.yazi, fontFamily: s ? F.siyah : k ? F.kalin : F.normal, fontSize: 14 }, style]}>
       {children}
@@ -93,7 +98,7 @@ export function Buton({
   const r = BUTON_RENK[tur];
   return (
     <Pressable
-      onPress={pasif ? undefined : onPress}
+      onPress={pasif || !onPress ? undefined : () => { efekt('tik'); onPress(); }}
       style={({ pressed }) => [
         st.buton,
         { backgroundColor: pasif ? '#33415A' : r.bg, borderColor: r.kenar ?? 'transparent', borderWidth: r.kenar ? 1.5 : 0 },

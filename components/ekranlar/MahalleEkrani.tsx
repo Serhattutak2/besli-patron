@@ -5,11 +5,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Pressable, StyleSheet, LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path, G, Text as SvgText, Circle, Rect, Line } from 'react-native-svg';
+import Svg, { Path, G, Circle, Rect, Line } from 'react-native-svg';
 import { useOyun } from '../../context/OyunContext';
 import * as M from '../../engine/motor';
 import * as V from '../../engine/veri';
 import { R, Y, Kart, Baslik, Buton, Rozet, Cubuk, Kalpler } from '../ui';
+import SvgText from '../SvgYazi';
 
 const KONUM: [number, number][] = [
   [92, 78],
@@ -366,7 +367,7 @@ function KupaKarti() {
           {k.turlar.length === 0 && <Y style={{ color: R.soluk, fontSize: 12, lineHeight: 18 }}>{k.takimlar.map(kisa).join(' · ')}</Y>}
           {k.turlar.map((tur, ti) => (
             <View key={ti} style={{ marginBottom: 8 }}>
-              <Y k style={{ fontSize: 12, color: R.soluk, marginBottom: 4 }}>{TUR_AD[ti].toUpperCase()}</Y>
+              <Y k style={{ fontSize: 12, color: R.soluk, marginBottom: 4 }}>{TUR_AD[ti].toLocaleUpperCase('tr-TR')}</Y>
               {tur.map((m, mi) => (
                 <View key={mi} style={st.esleme}>
                   <Y k numberOfLines={1} style={{ flex: 1, fontSize: 12.5, color: m.kazanan === m.a ? R.yazi : m.kazanan ? R.soluk : R.yazi2 }}>{kisa(m.a)}</Y>

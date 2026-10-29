@@ -6,8 +6,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Pressable, StyleSheet, LayoutChangeEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import Svg, { Rect, Line, Circle, G, Path, Ellipse, Text as SvgText } from 'react-native-svg';
+import Svg, { Rect, Line, Circle, G, Path, Ellipse } from 'react-native-svg';
 import { R, Y, Buton } from './ui';
+import SvgText from './SvgYazi';
 
 type Atis = 'gol' | 'kurtarış' | 'auta';
 

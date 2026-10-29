@@ -10,6 +10,7 @@ import * as M from '../engine/motor';
 import * as Kayit from '../engine/kayit';
 import { odulluGoster, gecisGoster, reklamlariBaslat } from '../services/reklam';
 import { TEST_MODU } from '../constants/ayar';
+import { efekt } from '../services/ses';
 
 export type Bildirim = { id: number; tur: string; metin: string };
 
@@ -41,6 +42,8 @@ export function OyunProvider({ children }: { children: React.ReactNode }) {
   ref.current = s;
 
   const bildir = useCallback((metin: string, tur = 'bilgi') => {
+    const ses = ({ kupa: 'fanfar', kotu: 'kayip', para: 'odul', forma: 'odul', gorev: 'odul', abone: 'odul', mahalle: 'fanfar' } as const)[tur as 'kupa'];
+    if (ses) efekt(ses);
     const id = bildirimSayac++;
     setBildirimler((b) => [...b.slice(-3), { id, tur, metin }]);
     setTimeout(() => setBildirimler((b) => b.filter((x) => x.id !== id)), tur === 'hata' ? 3200 : 2600);

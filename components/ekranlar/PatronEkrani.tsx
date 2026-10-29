@@ -3,7 +3,7 @@
 // Patron: unvan, şehir fethi ve taşınma, şehir rotası, istatistik, haberler, ayarlar
 // ============================================
 import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useOyun } from '../../context/OyunContext';
@@ -12,6 +12,7 @@ import * as V from '../../engine/veri';
 import { SEHIRLER } from '../../engine/sehirler';
 import { R, Y, Kart, Baslik, Buton, Rozet, Cubuk } from '../ui';
 import TestPaneli from '../TestPaneli';
+import { useAyarlar, ayarDegistir } from '../../services/ayarlar';
 
 function Besli() {
   return (
@@ -125,7 +126,7 @@ export default function PatronEkrani() {
 
       <Kart>
         <Baslik ikon="settings">Ayarlar</Baslik>
-        <Y style={{ fontSize: 12.5, color: R.soluk, marginBottom: 10 }}>Müzik ve dil seçenekleri bir sonraki güncellemede geliyor.</Y>
+        <AyarSecimleri />
         {onay ? (
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Buton tur="cizgi" yazi="Vazgeç" style={{ flex: 1 }} onPress={() => setOnay(false)} />
@@ -150,9 +151,47 @@ function Ist({ e, d }: { e: string; d: React.ReactNode }) {
 }
 
 const st = StyleSheet.create({
+  segment: { flexDirection: 'row', backgroundColor: R.arka2, borderRadius: 12, padding: 3 },
+  seg: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 9 },
+  segSec: { backgroundColor: R.turuncu },
   icerik: { padding: 12, paddingBottom: 30 },
   satir: { flexDirection: 'row', alignItems: 'center' },
   rota: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: 9, marginBottom: 6, borderWidth: 1, borderColor: R.cizgi, backgroundColor: R.kart },
   haber: { flexDirection: 'row', gap: 8, paddingVertical: 6, borderBottomWidth: 1, borderColor: R.cizgi },
   haberNokta: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
 });
+
+function Secenek<T extends string | number | boolean>({ baslik, ikon, secenekler, deger, sec }: { baslik: string; ikon: any; secenekler: { d: T; ad: string }[]; deger: T; sec: (d: T) => void }) {
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <View style={[st.satir, { marginBottom: 6 }]}>
+        <Ionicons name={ikon} size={15} color={R.yazi2} />
+        <Y k style={{ fontSize: 13, color: R.yazi2, marginLeft: 6 }}>{baslik}</Y>
+      </View>
+      <View style={st.segment}>
+        {secenekler.map((o) => (
+          <Pressable key={String(o.d)} onPress={() => sec(o.d)} style={[st.seg, deger === o.d && st.segSec]}>
+            <Y k style={{ fontSize: 12.5, color: deger === o.d ? '#1A1205' : R.yazi2 }}>{o.ad}</Y>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function AyarSecimleri() {
+  const a = useAyarlar();
+  return (
+    <>
+      <Secenek baslik="Dil / Language" ikon="language" deger={a.dil} sec={(d) => ayarDegistir({ dil: d })} secenekler={[{ d: 'tr', ad: 'Türkçe' }, { d: 'en', ad: 'English' }]} />
+      <Secenek
+        baslik="Müzik"
+        ikon="musical-notes"
+        deger={a.muzik ? a.muzikSes : 0}
+        sec={(d) => ayarDegistir(d === 0 ? { muzik: false } : { muzik: true, muzikSes: d })}
+        secenekler={[{ d: 0, ad: 'Sessiz' }, { d: 0.3, ad: 'Kısık' }, { d: 0.6, ad: 'Normal' }, { d: 1, ad: 'Yüksek' }]}
+      />
+      <Secenek baslik="Ses efektleri" ikon="volume-high" deger={a.efekt} sec={(d) => ayarDegistir({ efekt: d })} secenekler={[{ d: false, ad: 'Sessiz' }, { d: true, ad: 'Açık' }]} />
+    </>
+  );
+}

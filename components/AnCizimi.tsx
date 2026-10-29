@@ -3,8 +3,9 @@
 // Canlı anların küçük sahne çizimleri (her olay türü için bir illüstrasyon)
 // ============================================
 import React from 'react';
-import Svg, { Rect, Circle, Path, Ellipse, G, Line, Text as SvgText, Defs, LinearGradient, Stop, Polygon } from 'react-native-svg';
+import Svg, { Rect, Circle, Path, Ellipse, G, Line, Defs, LinearGradient, Stop, Polygon } from 'react-native-svg';
 import type { SahneTuru } from '../engine/anlar';
+import SvgText from './SvgYazi';
 
 const W = 300;
 const H = 120;

@@ -267,7 +267,7 @@ function TemaBandi() {
         <Ionicons name={t.ikon as any} size={18} color={t.renk} />
       </View>
       <View style={{ flex: 1, marginLeft: 10 }}>
-        <Y style={{ fontSize: 10.5, color: R.soluk }}>BUGÜN · {V.GUN_ADLARI[V.haftaGunu(s.gun)].toUpperCase()}</Y>
+        <Y style={{ fontSize: 10.5, color: R.soluk }}>BUGÜN · {V.GUN_ADLARI[V.haftaGunu(s.gun)].toLocaleUpperCase('tr-TR')}</Y>
         <Y s style={{ fontSize: 14.5, color: t.renk }}>{t.ad}</Y>
         <Y style={{ fontSize: 11.5, color: R.yazi2 }}>{t.aciklama}</Y>
       </View>

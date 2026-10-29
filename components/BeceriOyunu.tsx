@@ -7,9 +7,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Pressable, StyleSheet, LayoutChangeEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import Svg, { Rect, Circle, Line, G, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Rect, Circle, Line, G, Path } from 'react-native-svg';
 import type { MiniOyunTuru } from '../engine/anlar';
 import { R, Y, Buton, Cubuk } from './ui';
+import SvgText from './SvgYazi';
 
 export default function BeceriOyunu({ tur, onBitti, hirsiz }: { tur: MiniOyunTuru; onBitti: (basarili: boolean) => void; hirsiz?: boolean }) {
   if (tur === 'dokun') return <Dokun onBitti={onBitti} />;

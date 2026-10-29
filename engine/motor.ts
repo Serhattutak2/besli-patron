@@ -651,7 +651,7 @@ export function anCevapla(onceki: OyunDurumu, secim: number | null, basarili = t
   }
   const sonuc = metinDoldur(s, kullan.sonuc, ca.takimId);
   bildir(s, secim == null || (sc.oyun && !basarili) ? 'kotu' : an.nadir ? 'para' : 'an', sonuc);
-  if (an.nadir || an.takip) haber(s, `${metinDoldur(s, an.baslik, ca.takimId)} ${sonuc}`, 'iyi');
+  if (an.nadir || an.takip) haber(s, `${metinDoldur(s, an.baslik, ca.takimId)} · ${sonuc}`, 'iyi');
   return s;
 }
 

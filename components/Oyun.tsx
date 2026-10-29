@@ -2,8 +2,11 @@
 // SAHA BİZİM — components/Oyun.tsx
 // Oyun kabuğu: üst bar, 5 sekme, alt menü ve pencereler
 // ============================================
-import React, { useState } from 'react';
-import { View, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Pressable, StyleSheet, ActivityIndicator, AppState } from 'react-native';
+import { muzikModu, muzikDuraklat, sesKilidiAc } from '../services/ses';
+import { ayarlariYukle, useAyarlar } from '../services/ayarlar';
+import { DilBaglami, dilAyarla } from '../i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOyun } from '../context/OyunContext';
@@ -29,12 +32,36 @@ const SEKMELER: { id: Sekme; ad: string; ikon: keyof typeof Ionicons.glyphMap }[
   { id: 'patron', ad: 'Patron', ikon: 'person' },
 ];
 
+/** Saate ve sahadaki maça göre müzik seçer; reklamda ve arka planda susar */
+function SesYoneticisi() {
+  const { s, reklamOynuyor } = useOyun();
+  useEffect(() => {
+    const abone = AppState.addEventListener('change', (d) => muzikDuraklat(d !== 'active'));
+    return () => abone.remove();
+  }, []);
+  useEffect(() => {
+    muzikDuraklat(reklamOynuyor);
+  }, [reklamOynuyor]);
+  const saat = s ? Math.floor(s.dakika / 60) : 9;
+  const buyukMac = !!s?.rezervasyonlar.some((r) => r.durum === 'oynaniyor' && (r.derbi || r.final || r.kupa || r.lig || r.ozel === 'meydan'));
+  const mod = !s ? null : buyukMac ? 'mac' : s.gunBitti || saat >= 19 || saat < 9 ? 'gece' : 'gunduz';
+  useEffect(() => {
+    muzikModu(mod);
+  }, [mod]);
+  return null;
+}
+
 export default function Oyun() {
   const { s, yukleniyor, yap } = useOyun();
   const [sekme, setSekme] = useState<Sekme>('tesis');
   const [mini, setMini] = useState(false);
   const [gorev, setGorev] = useState(false);
   const ic = useSafeAreaInsets();
+  const { dil } = useAyarlar();
+  dilAyarla(dil);
+  useEffect(() => {
+    ayarlariYukle();
+  }, []);
 
   if (yukleniyor || !s) {
     return (
@@ -53,7 +80,9 @@ export default function Oyun() {
   };
 
   return (
-    <View style={[st.kap, { paddingTop: ic.top }]}>
+    <DilBaglami.Provider value={dil}>
+    <View style={[st.kap, { paddingTop: ic.top }]} onTouchStart={sesKilidiAc}>
+      <SesYoneticisi />
       <UstBar onGorev={() => setGorev(true)} />
       <View style={{ flex: 1 }}>
         {sekme === 'tesis' && <TesisEkrani />}
@@ -101,6 +130,7 @@ export default function Oyun() {
       <Kutlama />
       <DenemeReklam />
     </View>
+    </DilBaglami.Provider>
   );
 }
 
