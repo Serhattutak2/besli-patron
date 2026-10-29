@@ -72,10 +72,22 @@ jobs:
         run: npx --yes eas-cli@latest init --non-interactive --force
 
       - name: iOS derle (EAS)
-        run: npx --yes eas-cli@latest build --platform ios --profile production --non-interactive --wait
+        run: |
+          set -o pipefail
+          npx --yes eas-cli@latest build --platform ios --profile production --non-interactive --wait 2>&1 | tee eas-derleme.log
 
       - name: App Store Connect'e yükle
-        run: npx --yes eas-cli@latest submit --platform ios --profile production --latest --non-interactive --wait
+        run: |
+          set -o pipefail
+          npx --yes eas-cli@latest submit --platform ios --profile production --latest --non-interactive --wait 2>&1 | tee eas-gonderim.log
+
+      - name: Hata özeti
+        if: failure()
+        run: |
+          for f in eas-derleme.log eas-gonderim.log; do
+            [ -f "$f" ] || continue
+            sed -r 's/\x1B\[[0-9;]*[mK]//g' "$f" | grep -v '^\s*$' | tail -40 | while IFS= read -r l; do echo "::warning::$f | $l"; done
+          done
 
       - name: Özet
         run: echo "::notice::Sürüm ${{ steps.imza.outputs.surum }} (derleme ${{ steps.imza.outputs.derleme }}) App Store Connect'e yüklendi. İşlenmesi 10-30 dakika sürer."
