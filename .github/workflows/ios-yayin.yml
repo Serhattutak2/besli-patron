@@ -84,9 +84,19 @@ jobs:
 
       - name: App Store Connect'e yükle
         run: |
-          mkdir -p ~/.appstoreconnect/private_keys
-          cp imza/asc.p8 ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
-          ls -la SahaBizim.ipa imza/ > eas-gonderim.log 2>&1
+          echo "yükleme başlıyor" > eas-gonderim.log
+          mkdir -p ~/.appstoreconnect/private_keys imza
+          python3 - <<'PY' >> eas-gonderim.log 2>&1
+          import os
+          p8 = os.environ['ASC_KEY_P8'].strip().replace('\\n', '\n')
+          if '-----BEGIN' not in p8:
+              p8 = '-----BEGIN PRIVATE KEY-----\n' + p8 + '\n-----END PRIVATE KEY-----'
+          p8 = p8.replace('-----BEGIN PRIVATE KEY----- ', '-----BEGIN PRIVATE KEY-----\n').replace(' -----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----')
+          for yol in [os.path.expanduser('~/.appstoreconnect/private_keys/AuthKey_' + os.environ['ASC_KEY_ID'].strip() + '.p8'), 'imza/asc.p8']:
+              open(yol, 'w').write(p8 + '\n')
+          print('anahtar yazıldı')
+          PY
+          ls -la SahaBizim.ipa >> eas-gonderim.log 2>&1 || { echo "ipa bulunamadı:" >> eas-gonderim.log; find . -name '*.ipa' -maxdepth 3 >> eas-gonderim.log; exit 1; }
           if xcrun altool --upload-app -f SahaBizim.ipa -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID" >> eas-gonderim.log 2>&1; then
             echo "altool ile yüklendi" >> eas-gonderim.log
           else
