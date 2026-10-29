@@ -1,12 +1,12 @@
 {
   "expo": {
     "name": "Saha Bizim",
-    "slug": "abacusai-mobile-apps",
+    "slug": "saha-bizim",
     "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "scheme": "abacusai1789939013",
+    "scheme": "sahabizim",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sardurtechnologies.beslipatron",
@@ -64,10 +64,7 @@
       ]
     ],
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "efb521a5-73f6-4cbd-8357-025593741ce6"
-      }
+      "router": {}
     },
     "splash": {
       "image": "./assets/splash-icon.png",
