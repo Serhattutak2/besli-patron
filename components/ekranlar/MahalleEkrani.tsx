@@ -58,6 +58,7 @@ export default function MahalleEkrani() {
   const kontrol = s.mahalleKontrol[m.id] ?? 0;
   const sahip = s.mahalleSahip[m.id];
   const toplamSahip = M.sahipMahalleSayisi(s);
+  const bayrakR = V.BAYRAK_SECENEK[s.tesisSus?.bayrak ?? 0] ?? V.BAYRAK_SECENEK[0];
 
   return (
     <ScrollView contentContainerStyle={st.icerik} showsVerticalScrollIndicator={false}>
@@ -124,8 +125,8 @@ export default function MahalleEkrani() {
                     {own ? (
                       <G>
                         <Line x1={cx + 26} y1={cy - 34} x2={cx + 26} y2={cy - 8} stroke="#F8FAFC" strokeWidth="2" />
-                        <Path d={`M${cx + 26} ${cy - 34} q7 ${dalga % 2 ? -3 : 3} 14 0 q0 5 0 9 q-7 ${dalga % 2 ? 3 : -3} -14 0 z`} fill="#F97316" />
-                        <Circle cx={cx + 33} cy={cy - 29.5} r="2" fill="#FFFFFF" />
+                        <Path d={`M${cx + 26} ${cy - 34} q7 ${dalga % 2 ? -3 : 3} 14 0 q0 5 0 9 q-7 ${dalga % 2 ? 3 : -3} -14 0 z`} fill={bayrakR.a} />
+                        <Circle cx={cx + 33} cy={cy - 29.5} r="2" fill={bayrakR.b} />
                       </G>
                     ) : k < 30 ? (
                       <G>

@@ -76,10 +76,10 @@ export default function ProgramEkrani() {
                       <Y style={{ fontSize: 11, color: R.mat }}>boş</Y>
                     </View>
                   );
-                const renk = r.derbi || r.final || r.ozel === 'meydan' ? R.turuncu : r.kupa ? R.sari : r.sozlesme ? R.sari : r.abone ? R.pembe : r.takimId.startsWith('misafir:') ? R.mavi : R.yesil;
+                const renk = r.lig ? R.mor : r.derbi || r.final || r.ozel === 'meydan' ? R.turuncu : r.kupa ? R.sari : r.sozlesme ? R.sari : r.abone ? R.pembe : r.takimId.startsWith('misafir:') ? R.mavi : R.yesil;
                 const kupaM = r.kupa ? s.kupa?.turlar[r.kupa.tur]?.[r.kupa.esleme] : null;
-                const ad = r.derbi ? 'DERBİ' : r.final ? 'BÜYÜK FİNAL' : kupaM ? `${M.takimAdi(s, kupaM.a).split(' ')[0]} - ${M.takimAdi(s, kupaM.b).split(' ')[0]}` : M.takimAdi(s, r.takimId);
-                const alt = r.kupa ? ['Kupa çeyrek', 'Kupa yarı', 'KUPA FİNALİ'][r.kupa.tur] : r.final ? 'rakiple' : r.ozel === 'meydan' ? 'meydan okuma' : r.ozel === 'dugun' ? 'düğün maçı' : r.ozel === 'hayir' ? 'hayır maçı' : r.sozlesme ? 'sözleşme' : r.derbi ? 'Pazar derbisi' : M.para(r.fiyat);
+                const ad = r.lig ? `Saha Bizim SK - ${M.takimAdi(s, r.takimId).split(' ')[0]}` : r.derbi ? 'DERBİ' : r.final ? 'BÜYÜK FİNAL' : kupaM ? `${M.takimAdi(s, kupaM.a).split(' ')[0]} - ${M.takimAdi(s, kupaM.b).split(' ')[0]}` : M.takimAdi(s, r.takimId);
+                const alt = r.lig ? 'Lig maçı' : r.kupa ? ['Kupa çeyrek', 'Kupa yarı', 'KUPA FİNALİ'][r.kupa.tur] : r.final ? 'rakiple' : r.ozel === 'meydan' ? 'meydan okuma' : r.ozel === 'dugun' ? 'düğün maçı' : r.ozel === 'hayir' ? 'hayır maçı' : r.sozlesme ? 'sözleşme' : r.derbi ? 'Pazar derbisi' : M.para(r.fiyat);
                 return (
                   <View key={x.id} style={[st.hucre, { backgroundColor: renk + '22', borderColor: renk + '88' }]}>
                     <Y k style={{ fontSize: 11, color: R.yazi }} numberOfLines={1}>

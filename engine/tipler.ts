@@ -32,6 +32,7 @@ export type Rezervasyon = {
   sozlesme?: boolean;
   kupa?: { tur: number; esleme: number };
   final?: boolean;
+  lig?: boolean;
   durum: 'bekliyor' | 'oynaniyor' | 'bitti';
   skor?: [number, number];
 };
@@ -114,7 +115,8 @@ export type ReklamTuru =
   | 'menajer'
   | 'gununyildizi'
   | 'kredi'
-  | 'seri';
+  | 'seri'
+  | 'antrenman';
 
 export type OyunDurumu = {
   surum: number;
@@ -191,7 +193,26 @@ export type OyunDurumu = {
   finalKazanildi: boolean;
   gorevler: GunlukGorevler;
   sezon: SezonKarti;
+  takim: KendiTakim;
+  tesisSus: TesisSus;
 };
+
+export type Mevki = 'K' | 'D' | 'O' | 'F';
+export type Oyuncu = { id: string; ad: string; mevki: Mevki; guc: number; nereden: string; bedel: number };
+export type LigTakim = { id: string; ad: string; guc: number; o: number; g: number; b: number; m: number; ag: number; yg: number };
+export type LigSonuc = { hafta: number; a: string; b: string; skor: [number, number] };
+export type Lig = { sezon: number; hafta: number; takimlar: LigTakim[]; fikstur: [string, string][][]; sonuclar: LigSonuc[]; bitti: boolean; sampiyon?: string };
+export type KendiTakim = {
+  kuruldu: boolean;
+  oyuncular: Oyuncu[];
+  adaylar: Oyuncu[];
+  adayGun: number;
+  antrenmanGun: number;
+  lig: Lig | null;
+  ligSezon: number;
+  sampiyonluk: number;
+};
+export type TesisSus = { cim: number; tabela: number; bayrak: number; maskot: number; acik: string[] };
 
 export type Sozlesme = {
   id: string;

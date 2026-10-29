@@ -22,7 +22,7 @@ import Svg, {
 } from 'react-native-svg';
 import type { OyunDurumu, Saha, Rezervasyon } from '../engine/tipler';
 import * as M from '../engine/motor';
-import { TAKIM_TIPLERI } from '../engine/veri';
+import { TAKIM_TIPLERI, CIM_SECENEK, TABELA_SECENEK, BAYRAK_SECENEK } from '../engine/veri';
 
 type Props = {
   durum: OyunDurumu;
@@ -228,10 +228,14 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
   const isik = saha.yukseltmeler.isik ?? 0;
   const isikAcik = gece && isik > 0 && (oynuyor || durum.rezervasyonlar.some((r) => r.sahaId === saha.id && r.durum !== 'bitti'));
   const kaliteOran = Math.max(0, Math.min(1, (saha.kalite - 1) / 9));
-  const cim1 = karistir('#9C8B4A', '#2FA14A', kaliteOran);
-  const cim2 = karistir('#8A7B40', '#27913F', kaliteOran);
+  const sus = durum.tesisSus ?? { cim: 0, tabela: 0, bayrak: 0, maskot: 0, acik: [] };
+  const cimS = CIM_SECENEK[sus.cim] ?? CIM_SECENEK[0];
+  const tabelaS = TABELA_SECENEK[sus.tabela] ?? TABELA_SECENEK[0];
+  const bayrakS = BAYRAK_SECENEK[sus.bayrak] ?? BAYRAK_SECENEK[0];
+  const cim1 = karistir('#9C8B4A', cimS.a, kaliteOran);
+  const cim2 = karistir('#8A7B40', cimS.b, kaliteOran);
   const tribun = saha.yukseltmeler.tribun ?? 0;
-  const takimRenk = aktifRez && !aktifRez.takimId.startsWith('misafir:') ? TAKIM_TIPLERI[M.takimBul(durum, aktifRez.takimId)?.tip ?? 'amator'].renk : '#F59E0B';
+  const takimRenk = aktifRez?.lig ? bayrakS.a : aktifRez && !aktifRez.takimId.startsWith('misafir:') ? TAKIM_TIPLERI[M.takimBul(durum, aktifRez.takimId)?.tip ?? 'amator'].renk : '#F59E0B';
   const sponsorlar = useMemo(() => ['ÇAY OCAĞI', 'MAHALLE TV', 'SAHA BİZİM', 'GECE LİGİ'], []);
   const rakipRenk = useMemo(() => {
     const id = aktifRez?.id ?? 'x';
@@ -560,6 +564,20 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
             );
           })()}
 
+          {/* Kulüp bayrağı */}
+          {!kucuk && (() => {
+            const d = Math.sin(kare / 5) * 3;
+            return (
+              <G>
+                <Rect x="20" y="150" width="2" height="100" fill="#CBD5E1" />
+                <Path d={`M22 152 q10 ${d} 22 0 l0 8 q-11 ${-d} -22 0 z`} fill={bayrakS.a} />
+                <Path d={`M22 160 q10 ${d} 22 0 l0 8 q-11 ${-d} -22 0 z`} fill={bayrakS.b} />
+                <Circle cx="33" cy={160 + d / 2} r="2.4" fill={bayrakS.a === '#111827' ? '#FBBF24' : '#FFFFFF'} opacity={0.9} />
+              </G>
+            );
+          })()}
+          {!kucuk && sus.maskot > 0 && <Maskot tur={sus.maskot} x={100} y={252} kare={kare} sevin={oynuyor && mac.gol > 0} />}
+
           {/* Alt şerit: soyunma, giriş, çay ocağı */}
           <G>
             {(saha.yukseltmeler.soyunma ?? 0) > 0 && (
@@ -590,8 +608,9 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
             <G>
               <Rect x="168" y="270" width="2.5" height="24" fill="#475569" />
               <Rect x="230" y="270" width="2.5" height="24" fill="#475569" />
-              <Rect x="160" y="262" width="80" height="14" rx="3" fill="#0B1220" stroke="#F59E0B" strokeWidth="1" />
-              <SvgText x="200" y="272" fontSize="7.5" fontWeight="bold" fill="#F59E0B" textAnchor="middle">
+              <Rect x="160" y="262" width="80" height="14" rx="3" fill={tabelaS.zemin} stroke={tabelaS.yazi} strokeWidth="1" />
+              {sus.tabela === 2 && <Rect x="158" y="260" width="84" height="18" rx="4" fill="none" stroke={tabelaS.yazi} strokeWidth="1" opacity={0.3 + 0.3 * Math.sin(kare / 4)} />}
+              <SvgText x="200" y="272" fontSize="7.5" fontWeight="bold" fill={tabelaS.yazi} textAnchor="middle">
                 SAHA BİZİM
               </SvgText>
             </G>
@@ -701,4 +720,34 @@ function Polyline2({ a, b }: { a: [number, number]; b: [number, number] }) {
   const p1 = P(a[0], a[1]);
   const p2 = P(b[0], b[1]);
   return <Line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} />;
+}
+
+// ---------- Maskot ----------
+function Maskot({ tur, x, y, kare, sevin }: { tur: number; x: number; y: number; kare: number; sevin: boolean }) {
+  const zip = sevin ? -Math.abs(Math.sin(kare / 2)) * 8 : -Math.abs(Math.sin(kare / 9)) * 1.5;
+  const kol = sevin ? Math.sin(kare / 2) * 6 : Math.sin(kare / 8) * 3;
+  const renk = ['', '#F59E0B', '#78350F', '#EAB308', '#F8FAFC'][tur];
+  const yuz = ['', '#FDBA74', '#F8FAFC', '#FDE047', '#F8FAFC'][tur];
+  const yy = y + zip;
+  return (
+    <G>
+      <Ellipse cx={x} cy={y + 9} rx="8" ry="2.5" fill="#000" opacity={0.25} />
+      <Line x1={x - 3} y1={yy + 2} x2={x - 4} y2={yy + 9} stroke={renk} strokeWidth="3" />
+      <Line x1={x + 3} y1={yy + 2} x2={x + 4} y2={yy + 9} stroke={renk} strokeWidth="3" />
+      <Ellipse cx={x} cy={yy - 4} rx="7" ry="8" fill={renk} />
+      <Rect x={x - 5} y={yy - 7} width="10" height="6" rx="1.5" fill="#F8FAFC" opacity={0.85} />
+      <Line x1={x - 6} y1={yy - 7} x2={x - 12} y2={yy - 13 - kol} stroke={renk} strokeWidth="2.6" strokeLinecap="round" />
+      <Line x1={x + 6} y1={yy - 7} x2={x + 12} y2={yy - 13 + kol} stroke={renk} strokeWidth="2.6" strokeLinecap="round" />
+      {tur === 3 && <Circle cx={x} cy={yy - 17} r="9.5" fill="#C2410C" />}
+      {tur === 1 && <Path d={`M${x - 7} ${yy - 19} l2 -7 l4 5 z M${x + 7} ${yy - 19} l-2 -7 l-4 5 z`} fill={renk} />}
+      {tur === 4 && <Path d={`M${x - 7} ${yy - 20} q-5 4 -2 10 M${x + 7} ${yy - 20} q5 4 2 10`} stroke="#1F2937" strokeWidth="3.5" fill="none" strokeLinecap="round" />}
+      <Circle cx={x} cy={yy - 17} r="7" fill={tur === 2 ? '#F8FAFC' : renk} />
+      <Circle cx={x} cy={yy - 15} r="4" fill={yuz} opacity={tur === 2 ? 0 : 0.9} />
+      <Circle cx={x - 2.5} cy={yy - 18.5} r="1.1" fill="#111827" />
+      <Circle cx={x + 2.5} cy={yy - 18.5} r="1.1" fill="#111827" />
+      {tur === 2 ? <Path d={`M${x - 2} ${yy - 16} l2 4 l2 -4 z`} fill="#F59E0B" /> : <Circle cx={x} cy={yy - 15.5} r="1.2" fill="#1F2937" />}
+      {tur === 1 && <Path d={`M${x - 3} ${yy - 15} h-5 M${x + 3} ${yy - 15} h5`} stroke="#1F2937" strokeWidth="0.6" />}
+      {sevin && <Path d={`M${x - 2} ${yy - 13.5} q2 2 4 0`} stroke="#7F1D1D" strokeWidth="0.9" fill="none" />}
+    </G>
+  );
 }

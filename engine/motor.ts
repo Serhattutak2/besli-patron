@@ -154,7 +154,7 @@ export function teklifEnerjisi(s: OyunDurumu) {
 }
 
 // ---------- Yeni oyun ----------
-type Kalici = Partial<Pick<OyunDurumu, 'efsaneYildiz' | 'formalar' | 'istatistik' | 'tumZamanKazanc' | 'girisSerisi' | 'sonGirisTarihi' | 'miniOyunRekor' | 'hikayeGoruldu' | 'sezon' | 'kupaSayisi'>>;
+type Kalici = Partial<Pick<OyunDurumu, 'efsaneYildiz' | 'formalar' | 'istatistik' | 'tumZamanKazanc' | 'girisSerisi' | 'sonGirisTarihi' | 'miniOyunRekor' | 'hikayeGoruldu' | 'sezon' | 'kupaSayisi' | 'takim' | 'tesisSus'>>;
 
 export function yeniOyun(sehirSira = 0, kalici: Kalici = {}, simdi = Date.now()): OyunDurumu {
   const sh = SEHIRLER[sehirSira % SEHIRLER.length];
@@ -252,6 +252,8 @@ export function yeniOyun(sehirSira = 0, kalici: Kalici = {}, simdi = Date.now())
     finalKazanildi: false,
     gorevler: { gun: 0, liste: [], haftaBas: 1, haftaTamam: 0, haftaSandikAlindi: false },
     sezon: kalici.sezon ? { ...kalici.sezon, baslangic: 1 } : { no: 1, baslangic: 1, xp: 0, alinan: [] },
+    takim: kalici.takim ? { ...kalici.takim, lig: null, adaylar: [], adayGun: 0, ligSezon: 0 } : bosTakim(),
+    tesisSus: kalici.tesisSus ?? { cim: 0, tabela: 0, bayrak: 0, maskot: 0, acik: [] },
   };
   gorevUret(s);
   haber(s, `${sh.ad} macerası başladı. ${sh.karakter.rakip} seni izliyor.`, 'bilgi');
@@ -437,6 +439,10 @@ function macBitir(s: OyunDurumu, r: Rezervasyon) {
   }
   if (r.final) {
     finalBitti(s, r);
+    return;
+  }
+  if (r.lig) {
+    ligMacBitti(s, r);
     return;
   }
   if (r.ozel === 'meydan') {
@@ -1053,6 +1059,7 @@ export function yeniGun(onceki: OyunDurumu, simdi = Date.now()): OyunDurumu {
   sozlesmeGunu(s);
   kupaGunu(s);
   finalGunu(s);
+  ligGunu(s);
   if (s.gun - s.sezon.baslangic >= V.SEZON_GUN) sezonYenile(s);
   gorevUret(s);
   const etk = bugununEtkinligi(new Date(simdi));
@@ -1331,6 +1338,14 @@ export function reklamOdulu(onceki: OyunDurumu, tur: ReklamTuru, hedef?: string)
     }
     case 'kredi':
       return krediAl(s, true);
+    case 'antrenman': {
+      const o = s.takim.oyuncular.find((x) => x.id === hedef) ?? [...s.takim.oyuncular].sort((a, b) => a.guc - b.guc)[0];
+      if (o) {
+        o.guc = Math.min(99, o.guc + 3);
+        mesaj = `Özel antrenman: ${o.ad} +3 güç (${o.guc}).`;
+      } else mesaj = 'Önce takımına oyuncu al.';
+      break;
+    }
     case 'seri':
       s.seriKurtarilabilir = false;
       s.girisSerisi += 1;
@@ -1384,6 +1399,29 @@ export function eskiKayittanHediye(eski: any): { nakit: number; itibar: number }
 // ---------- Deneme (test) modu ----------
 // Sadece deneme sürümünde görünen panelin kullandığı kısayollar.
 export const TEST = {
+  takimHazir(o: OyunDurumu): OyunDurumu {
+    const s = kopya(o);
+    if (!s.takim.kuruldu) {
+      s.takim.kuruldu = true;
+      const ilk = sehir(s).mahalleler[0].takimlar[0].id;
+      s.takim.oyuncular = (['K', 'D', 'D', 'O', 'F', 'F'] as const).map((m) => oyuncuUret(s, ilk, m));
+      adayYenile(s);
+      ligKur(s);
+    }
+    return s;
+  },
+  ligBuAksam(o: OyunDurumu): OyunDurumu {
+    let s = TEST.takimHazir(o);
+    s = kopya(s);
+    if (!s.takim.lig || s.takim.lig.bitti) ligKur(s);
+    const rakip = ligSiradakiRakip(s);
+    const saha = s.sahalar.find(hizmette);
+    if (saha && rakip) {
+      s.rezervasyonlar = s.rezervasyonlar.filter((r) => !(r.sahaId === saha.id && r.saat === V.LIG_SAAT));
+      s.rezervasyonlar.push({ id: yeniId('l'), takimId: `misafir:${rakip}`, sahaId: saha.id, saat: V.LIG_SAAT, fiyat: 0, abone: false, lig: true, durum: 'bekliyor' });
+    }
+    return s;
+  },
   kupaBaslat(o: OyunDurumu): OyunDurumu {
     const s = kopya(o);
     const takimlar = tumTakimlar(sehir(s)).map((t) => t.id).sort(() => rnd() - 0.5).slice(0, 8);
@@ -1822,10 +1860,8 @@ export function benimGucum(s: OyunDurumu): number {
 }
 /** 3. etap: kendi takımın gücü (yoksa 0) */
 export function takimGucuEk(s: OyunDurumu): number {
-  const t = (s as any).takim as { oyuncular?: { guc: number }[] } | undefined;
-  if (!t?.oyuncular?.length) return 0;
-  const enIyi = [...t.oyuncular].sort((a, b) => b.guc - a.guc).slice(0, 5);
-  return Math.round(enIyi.reduce((x, o) => x + o.guc, 0) / enIyi.length / 5);
+  if (!s.takim?.kuruldu || s.takim.oyuncular.length === 0) return 0;
+  return Math.round(takimGucu(s) / 8);
 }
 export function finalKazanmaSansi(s: OyunDurumu): number {
   const fark = benimGucum(s) - V.rakipGucu(s.sehirSira, s.final?.deneme ?? 0);
@@ -1893,4 +1929,267 @@ function meydanBitti(s: OyunDurumu, r: Rezervasyon) {
   const rk = sehir(s).karakter.rakip;
   haber(s, kazandik ? `${rk}'in takımını ${a}-${b} yendin! Mahalleler sana yöneldi.` : `${rk}'in takımı ${b}-${a} kazandı. Mahallede dedikodu var.`, kazandik ? 'iyi' : 'kotu');
   bildir(s, kazandik ? 'mahalle' : 'kotu', kazandik ? `Meydan okumayı kazandın: ${a}-${b}` : `Meydan okumayı kaybettin: ${a}-${b}`);
+}
+
+// ============================================
+// 3. ETAP: Saha Bizim SK (kendi takımın) ve tesis süsleme
+// ============================================
+export function bosTakim(): import('./tipler').KendiTakim {
+  return { kuruldu: false, oyuncular: [], adaylar: [], adayGun: 0, antrenmanGun: 0, lig: null, ligSezon: 0, sampiyonluk: 0 };
+}
+export function takimKurulabilir(s: OyunDurumu) {
+  return sahipMahalleSayisi(s) >= 1 || s.sehirSira > 0;
+}
+/** Kadronun gücü: en iyi 5 oyuncunun ortalaması (eksik oyuncu 20 sayılır) + mevki uyumu */
+export function takimGucu(s: OyunDurumu): number {
+  const o = [...s.takim.oyuncular].sort((a, b) => b.guc - a.guc).slice(0, 5);
+  const toplam = o.reduce((x, y) => x + y.guc, 0) + (5 - o.length) * 20;
+  const mevkiler = new Set(o.map((x) => x.mevki));
+  const uyum = (mevkiler.has('K') ? 3 : -4) + mevkiler.size;
+  return Math.round(toplam / 5 + uyum);
+}
+function oyuncuUret(s: OyunDurumu, takimId: string, mevki?: import('./tipler').Mevki): import('./tipler').Oyuncu {
+  const sh = sehir(s);
+  const havuz = V.OYUNCU_ADLARI[sh.id] && rnd() < 0.5 ? V.OYUNCU_ADLARI[sh.id] : V.OYUNCU_ADLARI.tr;
+  const m = mevki ?? sec(['K', 'D', 'D', 'O', 'O', 'F', 'F'] as import('./tipler').Mevki[]);
+  const sevgi = s.takimlar[takimId]?.sevgi ?? 30;
+  const guc = Math.round(sinirla(32 + sevgi / 4 + rnd() * 14 + s.sehirSira * 5 + s.takim.ligSezon, 25, 92));
+  const bedel = yuvarla50(guc * guc * 2.2 * maliyetCarpan(s));
+  return { id: yeniId('o'), ad: `${sec(havuz)} ${sec(V.LAKAPLAR[m])}`, mevki: m, guc, nereden: takimId, bedel };
+}
+function adayYenile(s: OyunDurumu) {
+  if (!s.takim.kuruldu) return;
+  const uygun = Object.entries(s.takimlar)
+    .filter(([id, t]) => t.sevgi >= 40 && takimBul(s, id))
+    .map(([id]) => id);
+  const kaynak = uygun.length ? uygun : tumTakimlar(sehir(s)).map((t) => t.id).slice(0, 4);
+  s.takim.adaylar = Array.from({ length: 3 }, () => oyuncuUret(s, sec(kaynak)));
+  s.takim.adayGun = s.gun;
+}
+export function takimKur(onceki: OyunDurumu): Sonuc {
+  if (onceki.takim.kuruldu) return hata(onceki, 'Takım zaten kurulu.');
+  if (!takimKurulabilir(onceki)) return hata(onceki, 'Önce bir mahalleyi tamamen kazan.');
+  const bedel = Math.round(V.TAKIM_KURULUS * maliyetCarpan(onceki));
+  if (onceki.nakit < bedel) return hata(onceki, `Kuruluş için ${para(bedel)} gerekli.`);
+  const s = kopya(onceki);
+  s.nakit -= bedel;
+  s.takim.kuruldu = true;
+  // çekirdek kadro: mahalleden 3 gönüllü
+  const ilk = sehir(s).mahalleler[0].takimlar[0].id;
+  s.takim.oyuncular = (['K', 'D', 'F'] as const).map((m) => ({ ...oyuncuUret(s, ilk, m), guc: 30 + Math.floor(rnd() * 8) }));
+  adayYenile(s);
+  ligKur(s);
+  haber(s, 'Saha Bizim SK kuruldu! Mahalle takımlarından oyuncu topla, Cumartesi lig maçına çık.', 'iyi');
+  return { s, mesaj: 'Saha Bizim SK kuruldu! 3 gönüllü kadroda.' };
+}
+export function oyuncuAl(onceki: OyunDurumu, id: string): Sonuc {
+  const a = onceki.takim.adaylar.find((x) => x.id === id);
+  if (!a) return hata(onceki, 'Oyuncu bulunamadı.');
+  if (onceki.takim.oyuncular.length >= V.KADRO_MAKS) return hata(onceki, `Kadro dolu (en fazla ${V.KADRO_MAKS}). Önce birini bırak.`);
+  if (onceki.nakit < a.bedel) return hata(onceki, `${para(a.bedel)} gerekli.`);
+  const s = kopya(onceki);
+  s.nakit -= a.bedel;
+  s.takim.oyuncular.push(a);
+  s.takim.adaylar = s.takim.adaylar.filter((x) => x.id !== id);
+  if (s.takimlar[a.nereden]) s.takimlar[a.nereden].sevgi = sinirla(s.takimlar[a.nereden].sevgi + 4, 0, 100);
+  return { s, mesaj: `${a.ad} imzayı attı! ${takimAdi(s, a.nereden)} gururlu.` };
+}
+export function oyuncuBirak(onceki: OyunDurumu, id: string): OyunDurumu {
+  const s = kopya(onceki);
+  s.takim.oyuncular = s.takim.oyuncular.filter((x) => x.id !== id);
+  return s;
+}
+export function adaylariYenile(onceki: OyunDurumu): Sonuc {
+  const bedel = Math.round(800 * maliyetCarpan(onceki));
+  if (onceki.nakit < bedel) return hata(onceki, `${para(bedel)} gerekli.`);
+  const s = kopya(onceki);
+  s.nakit -= bedel;
+  adayYenile(s);
+  return { s, mesaj: 'Gözlemci yeni isimler getirdi.' };
+}
+export function antrenmanYap(onceki: OyunDurumu): Sonuc {
+  if (!onceki.takim.kuruldu || onceki.takim.oyuncular.length === 0) return hata(onceki, 'Önce takım kur.');
+  if (onceki.takim.antrenmanGun === onceki.gun) return hata(onceki, 'Bugün antrenman yapıldı.');
+  if (onceki.enerji < V.ANTRENMAN_ENERJI) return hata(onceki, `${V.ANTRENMAN_ENERJI} enerji gerekli.`);
+  const s = kopya(onceki);
+  s.enerji -= V.ANTRENMAN_ENERJI;
+  s.takim.antrenmanGun = s.gun;
+  for (const o of s.takim.oyuncular) o.guc = Math.min(99, o.guc + (o.guc < 60 ? 2 : 1));
+  return { s, mesaj: 'Antrenman tamam: herkes güçlendi!' };
+}
+function ligKur(s: OyunDurumu) {
+  const sh = sehir(s);
+  const mah = [...sh.mahalleler].sort(() => rnd() - 0.5).slice(0, 4);
+  const taban = V.ligRakipGucu(s.sehirSira, s.takim.ligSezon);
+  const takimlar: import('./tipler').LigTakim[] = [
+    { id: 'biz', ad: 'Saha Bizim SK', guc: 0, o: 0, g: 0, b: 0, m: 0, ag: 0, yg: 0 },
+    { id: 'rakip', ad: `${sh.karakter.rakipSaha} SK`, guc: taban + 8, o: 0, g: 0, b: 0, m: 0, ag: 0, yg: 0 },
+    ...mah.map((m, i) => ({ id: `l${i}`, ad: `${m.ad} ${V.LIG_EKLERI[i % V.LIG_EKLERI.length]}`, guc: taban + Math.round(rnd() * 10 - 5), o: 0, g: 0, b: 0, m: 0, ag: 0, yg: 0 })),
+  ];
+  // 6 takım, 5 hafta: dairesel fikstür
+  const ids = takimlar.map((t) => t.id);
+  const fikstur: [string, string][][] = [];
+  const dön = ids.slice(1);
+  for (let h = 0; h < 5; h++) {
+    const dizi = [ids[0], ...dön];
+    const hafta: [string, string][] = [];
+    for (let i = 0; i < 3; i++) hafta.push([dizi[i], dizi[5 - i]]);
+    fikstur.push(hafta);
+    dön.unshift(dön.pop()!);
+  }
+  s.takim.ligSezon += 1;
+  s.takim.lig = { sezon: s.takim.ligSezon, hafta: 0, takimlar, fikstur, sonuclar: [], bitti: false };
+}
+function golSay(fark: number) {
+  const l = Math.max(0.4, 2.3 + fark / 12);
+  let n = 0;
+  let p = Math.exp(-l);
+  let k = p;
+  const u = rnd();
+  while (u > k && n < 9) {
+    n++;
+    p *= l / n;
+    k += p;
+  }
+  return n;
+}
+function ligMaciOyna(lig: import('./tipler').Lig, a: string, b: string, gA: number, gB: number): [number, number] {
+  const sa = golSay(gA - gB);
+  const sb = golSay(gB - gA);
+  const ta = lig.takimlar.find((t) => t.id === a)!;
+  const tb = lig.takimlar.find((t) => t.id === b)!;
+  ta.o++; tb.o++;
+  ta.ag += sa; ta.yg += sb; tb.ag += sb; tb.yg += sa;
+  if (sa > sb) { ta.g++; tb.m++; } else if (sb > sa) { tb.g++; ta.m++; } else { ta.b++; tb.b++; }
+  lig.sonuclar.push({ hafta: lig.hafta, a, b, skor: [sa, sb] });
+  return [sa, sb];
+}
+export function ligPuan(t: import('./tipler').LigTakim) {
+  return t.g * 3 + t.b;
+}
+export function ligSiralama(lig: import('./tipler').Lig) {
+  return [...lig.takimlar].sort((x, y) => ligPuan(y) - ligPuan(x) || y.ag - y.yg - (x.ag - x.yg) || y.ag - x.ag);
+}
+export function ligSiradakiRakip(s: OyunDurumu): string | null {
+  const l = s.takim.lig;
+  if (!l || l.bitti) return null;
+  const m = l.fikstur[l.hafta]?.find((x) => x.includes('biz'));
+  if (!m) return null;
+  const id = m[0] === 'biz' ? m[1] : m[0];
+  return l.takimlar.find((t) => t.id === id)?.ad ?? null;
+}
+export function ligKalanGun(s: OyunDurumu) {
+  return (V.LIG_GUNU - V.haftaGunu(s.gun) + 7) % 7;
+}
+function ligGunu(s: OyunDurumu) {
+  const t = s.takim;
+  if (!t?.kuruldu) return;
+  if (s.gun - t.adayGun >= 2 || t.adaylar.length === 0) adayYenile(s);
+  if (!t.lig || (t.lig.bitti && V.haftaGunu(s.gun) === 1)) ligKur(s);
+  const l = t.lig!;
+  if (l.bitti || V.haftaGunu(s.gun) !== V.LIG_GUNU) return;
+  const rakip = ligSiradakiRakip(s);
+  const saha = [...s.sahalar].filter((x) => hizmette(x) && acikSaatler(x).includes(V.LIG_SAAT)).sort((a, b) => (b.yukseltmeler.tribun ?? 0) - (a.yukseltmeler.tribun ?? 0))[0];
+  if (saha && rakip) {
+    s.rezervasyonlar = s.rezervasyonlar.filter((r) => !(r.sahaId === saha.id && r.saat === V.LIG_SAAT));
+    s.rezervasyonlar.push({ id: yeniId('l'), takimId: `misafir:${rakip}`, sahaId: saha.id, saat: V.LIG_SAAT, fiyat: 0, abone: false, lig: true, durum: 'bekliyor' });
+    haber(s, `Bu akşam ${V.saatYazi(V.LIG_SAAT)}: Saha Bizim SK - ${rakip} (lig ${l.hafta + 1}. hafta)`, 'bilgi');
+  } else {
+    ligHaftaOyna(s, null);
+  }
+}
+function ligHaftaOyna(s: OyunDurumu, r: Rezervasyon | null) {
+  const l = s.takim.lig;
+  if (!l || l.bitti) return;
+  const biz = l.takimlar.find((t) => t.id === 'biz')!;
+  biz.guc = s.takim.oyuncular.length >= 5 ? takimGucu(s) : 0;
+  let bizimSkor: [number, number] | null = null;
+  let rakipAd = '';
+  for (const [a, b] of l.fikstur[l.hafta]) {
+    const ga = a === 'biz' ? biz.guc : l.takimlar.find((t) => t.id === a)!.guc;
+    const gb = b === 'biz' ? biz.guc : l.takimlar.find((t) => t.id === b)!.guc;
+    if ((a === 'biz' || b === 'biz') && biz.guc === 0) {
+      // eksik kadro: hükmen 0-3
+      const ta = l.takimlar.find((t) => t.id === a)!;
+      const tb = l.takimlar.find((t) => t.id === b)!;
+      const bizA = a === 'biz';
+      const sk: [number, number] = bizA ? [0, 3] : [3, 0];
+      ta.o++; tb.o++; ta.ag += sk[0]; ta.yg += sk[1]; tb.ag += sk[1]; tb.yg += sk[0];
+      if (bizA) { tb.g++; ta.m++; } else { ta.g++; tb.m++; }
+      l.sonuclar.push({ hafta: l.hafta, a, b, skor: sk });
+      bizimSkor = [0, 3];
+      rakipAd = (bizA ? tb : ta).ad;
+      continue;
+    }
+    const sk = ligMaciOyna(l, a, b, ga, gb);
+    if (a === 'biz') { bizimSkor = sk; rakipAd = l.takimlar.find((t) => t.id === b)!.ad; }
+    if (b === 'biz') { bizimSkor = [sk[1], sk[0]]; rakipAd = l.takimlar.find((t) => t.id === a)!.ad; }
+  }
+  const c = maliyetCarpan(s);
+  if (bizimSkor) {
+    if (r) r.skor = bizimSkor;
+    const [x, y] = bizimSkor;
+    const gelir = Math.round((x > y ? 2200 : x === y ? 1200 : 600) * c);
+    s.nakit += gelir;
+    s.bugunGelir += gelir;
+    s.toplamKazanc += gelir;
+    s.tumZamanKazanc += gelir;
+    if (x > y) {
+      s.itibar += 4;
+      s.bugunItibar += 4;
+      for (const o of s.takim.oyuncular) o.guc = Math.min(99, o.guc + (rnd() < 0.3 ? 1 : 0));
+    }
+    const sonuc = biz.guc === 0 ? 'hükmen yenildi (kadroda 5 oyuncu yok)' : x > y ? 'kazandı' : x === y ? 'berabere kaldı' : 'kaybetti';
+    haber(s, `Lig: Saha Bizim SK ${x}-${y} ${rakipAd} · ${sonuc}. +${para(gelir)}`, x > y ? 'iyi' : x === y ? 'bilgi' : 'kotu');
+    bildir(s, x > y ? 'kupa' : x === y ? 'iyi' : 'kotu', `Lig: ${x}-${y} ${rakipAd}`);
+  }
+  l.hafta += 1;
+  if (l.hafta >= l.fikstur.length) {
+    l.bitti = true;
+    const sira = ligSiralama(l);
+    l.sampiyon = sira[0].id;
+    const bizSira = sira.findIndex((t) => t.id === 'biz') + 1;
+    if (bizSira === 1) {
+      s.takim.sampiyonluk += 1;
+      const odul = Math.round(15000 * c);
+      s.nakit += odul;
+      s.toplamKazanc += odul;
+      s.tumZamanKazanc += odul;
+      s.itibar += 25;
+      s.bugunItibar += 25;
+      formaVer(s, 2);
+      haber(s, `SAHA BİZİM SK ŞAMPİYON! +${para(odul)}, +25 itibar ve efsane forma.`, 'iyi');
+      bildir(s, 'kupa', 'Lig şampiyonu: Saha Bizim SK!');
+    } else {
+      const odul = Math.round((bizSira === 2 ? 6000 : bizSira === 3 ? 3000 : 1000) * c);
+      s.nakit += odul;
+      haber(s, `Lig bitti: ${bizSira}. olduk (+${para(odul)}). Şampiyon ${sira[0].ad}. Yeni sezon Pazartesi başlıyor.`, 'bilgi');
+    }
+  }
+}
+function ligMacBitti(s: OyunDurumu, r: Rezervasyon) {
+  ligHaftaOyna(s, r);
+}
+
+// ---------- Tesis süsleme ----------
+export type SusTuru = 'cim' | 'tabela' | 'bayrak' | 'maskot';
+export function susSecenekleri(tur: SusTuru): { ad: string; bedel: number }[] {
+  return tur === 'cim' ? V.CIM_SECENEK : tur === 'tabela' ? V.TABELA_SECENEK : tur === 'bayrak' ? V.BAYRAK_SECENEK : V.MASKOT_SECENEK;
+}
+export function susAcikMi(s: OyunDurumu, tur: SusTuru, i: number) {
+  return i === 0 || s.tesisSus.acik.includes(`${tur}${i}`);
+}
+export function susSec(onceki: OyunDurumu, tur: SusTuru, i: number): Sonuc {
+  const sec_ = susSecenekleri(tur)[i];
+  if (!sec_) return hata(onceki, 'Seçenek yok.');
+  const s = kopya(onceki);
+  if (!susAcikMi(s, tur, i)) {
+    const bedel = Math.round(sec_.bedel * maliyetCarpan(s));
+    if (s.nakit < bedel) return hata(onceki, `${para(bedel)} gerekli.`);
+    s.nakit -= bedel;
+    s.tesisSus.acik.push(`${tur}${i}`);
+    s.itibar += 2;
+  }
+  s.tesisSus[tur] = i;
+  return { s, mesaj: `${sec_.ad} seçildi!` };
 }

@@ -7,6 +7,7 @@ import React from 'react';
 import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useOyun } from '../../context/OyunContext';
+import SusKarti from '../SusKarti';
 import * as M from '../../engine/motor';
 import * as V from '../../engine/veri';
 import type { OyunDurumu, Saha } from '../../engine/tipler';
@@ -148,6 +149,7 @@ export default function TesisEkrani() {
         </Kart>
       )}
 
+      <SusKarti />
       <YeniSahalar />
       <Y style={{ color: R.mat, fontSize: 11, textAlign: 'center', marginTop: 4 }}>
         {sehir.ad} · Rakibin: {sehir.karakter.rakipSaha}

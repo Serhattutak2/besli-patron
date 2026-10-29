@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useOyun } from '../../context/OyunContext';
+import TakimKarti from '../TakimKarti';
 import * as M from '../../engine/motor';
 import * as V from '../../engine/veri';
 import { R, Y, Kart, Baslik, Buton, Rozet, Forma } from '../ui';
@@ -23,6 +24,7 @@ export default function KulupEkrani({ miniAc }: { miniAc: () => void }) {
 
   return (
     <ScrollView contentContainerStyle={st.icerik} showsVerticalScrollIndicator={false} onScrollBeginDrag={() => s.yeniFormalar.length && yap((d) => M.formalariGordu(d))}>
+      <TakimKarti />
       {/* Mini oyun */}
       <Kart vurgu={s.miniOyunHak > 0 ? R.turuncu : undefined}>
         <View style={st.satir}>

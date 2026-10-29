@@ -48,7 +48,7 @@ export default function Oyun() {
   const rozet: Partial<Record<Sekme, string | null>> = {
     program: s.teklifler.length > 0 ? String(s.teklifler.length) : null,
     mahalle: (s.derbi && !s.derbi.hazir && !s.derbi.sonuc) || (s.kupa && !s.kupa.hazir) || (s.final && !s.finalKazanildi) ? '!' : null,
-    kulup: s.miniOyunHak > 0 || s.yeniFormalar.length > 0 ? '•' : null,
+    kulup: s.miniOyunHak > 0 || s.yeniFormalar.length > 0 || (!s.takim.kuruldu && M.takimKurulabilir(s)) ? '•' : null,
     patron: M.tasinabilir(s) ? '!' : null,
   };
 

@@ -425,6 +425,7 @@ export const REKLAM_LIMIT: Record<ReklamTuru, number> = {
   gununyildizi: 6,
   kredi: 2,
   seri: 1,
+  antrenman: 3,
 };
 export const GECIS_REKLAM_ARALIK_GUN = 2;
 export const GECIS_REKLAM_ILK_GUN = 3;
@@ -520,3 +521,58 @@ export const KUPA_ODUL = [
 export function rakipGucu(sehirSira: number, deneme: number) {
   return 58 + (sehirSira % 8) * 5 + Math.floor(sehirSira / 8) * 10 - deneme * 3;
 }
+
+// ---------- 3. etap: Saha Bizim SK ----------
+export const TAKIM_KURULUS = 10000;
+export const KADRO_MAKS = 8;
+export const LIG_SAAT = 20;
+export const LIG_GUNU = 6; // Cumartesi
+export const ANTRENMAN_ENERJI = 25;
+export const MEVKI_AD: Record<string, string> = { K: 'Kaleci', D: 'Defans', O: 'Orta saha', F: 'Forvet' };
+export const OYUNCU_ADLARI: Record<string, string[]> = {
+  tr: ['Ahmet', 'Mehmet', 'Mustafa', 'Hüseyin', 'Hasan', 'İbrahim', 'Osman', 'Yusuf', 'Murat', 'Emre', 'Burak', 'Serkan', 'Volkan', 'Tolga', 'Kaan', 'Cem', 'Onur', 'Barış', 'Uğur', 'Selim', 'Okan', 'Erkan', 'Gökhan', 'Tuncay', 'Arda', 'Kerem', 'Batuhan', 'Furkan', 'Oğuz', 'Sinan', 'Halil', 'Ramazan', 'Kadir', 'Ferhat', 'Hakan', 'Caner', 'Engin', 'Ozan', 'Taner', 'Yasin'],
+  berlin: ['Lukas', 'Jonas', 'Felix', 'Leon', 'Max', 'Paul', 'Niklas', 'Tim'],
+  londra: ['Jack', 'Harry', 'Oliver', 'George', 'Charlie', 'Alfie', 'Tom', 'Danny'],
+  dubai: ['Omar', 'Khalid', 'Saeed', 'Rashid', 'Hamad', 'Ali', 'Majid', 'Faisal'],
+};
+export const LAKAPLAR: Record<string, string[]> = {
+  K: ['Eldiven', 'Duvar', 'Ahtapot', 'Kilit', 'Örümcek'],
+  D: ['Tank', 'Kaya', 'Beton', 'Demir', 'Buldozer'],
+  O: ['Pergel', 'Motor', 'Usta', 'Beyin', 'Pasör'],
+  F: ['Roket', 'Çakı', 'Şimşek', 'Golcü', 'Tilki'],
+};
+export const LIG_EKLERI = ['Gücü', 'Spor', 'Gençlik', 'Yıldızları', 'İdman Yurdu'];
+export function ligRakipGucu(sehirSira: number, ligSezon: number): number {
+  return 40 + sehirSira * 5 + Math.min(ligSezon, 8) * 2;
+}
+
+// ---------- 3. etap: tesis süsleme ----------
+export const CIM_SECENEK = [
+  { ad: 'Klasik yeşil', a: '#2FA14A', b: '#27913F', bedel: 0 },
+  { ad: 'Zümrüt', a: '#10B981', b: '#059669', bedel: 4000 },
+  { ad: 'Koyu orman', a: '#166534', b: '#14532D', bedel: 6000 },
+  { ad: 'Açık çayır', a: '#65A30D', b: '#4D7C0F', bedel: 8000 },
+  { ad: 'Gece ligi mavisi', a: '#0E7490', b: '#155E75', bedel: 15000 },
+];
+export const TABELA_SECENEK = [
+  { ad: 'Klasik', zemin: '#0B1220', yazi: '#F59E0B', bedel: 0 },
+  { ad: 'Tahta', zemin: '#78350F', yazi: '#FDE68A', bedel: 3000 },
+  { ad: 'Neon', zemin: '#111827', yazi: '#F472B6', bedel: 7000 },
+  { ad: 'Altın', zemin: '#FBBF24', yazi: '#78350F', bedel: 12000 },
+  { ad: 'Buz', zemin: '#E0F2FE', yazi: '#0369A1', bedel: 9000 },
+];
+export const BAYRAK_SECENEK = [
+  { ad: 'Turuncu yıldız', a: '#F97316', b: '#FFFFFF', bedel: 0 },
+  { ad: 'Kırmızı-beyaz', a: '#DC2626', b: '#FFFFFF', bedel: 5000 },
+  { ad: 'Sarı-lacivert', a: '#FACC15', b: '#1E3A8A', bedel: 5000 },
+  { ad: 'Yeşil-beyaz', a: '#16A34A', b: '#FFFFFF', bedel: 5000 },
+  { ad: 'Mor-sarı', a: '#7C3AED', b: '#FACC15', bedel: 8000 },
+  { ad: 'Siyah-altın', a: '#111827', b: '#FBBF24', bedel: 12000 },
+];
+export const MASKOT_SECENEK = [
+  { ad: 'Maskot yok', bedel: 0 },
+  { ad: 'Kedi Pamuk', bedel: 6000 },
+  { ad: 'Kartal Şahin', bedel: 10000 },
+  { ad: 'Aslan Kral', bedel: 15000 },
+  { ad: 'Köpek Karabaş', bedel: 8000 },
+];

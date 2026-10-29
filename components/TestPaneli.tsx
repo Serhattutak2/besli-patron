@@ -42,6 +42,8 @@ export default function TestPaneli() {
         {k('Kupa teklifi', M.TEST.kupaBaslat, 'Mahalle sekmesinde kupa teklifi')}
         {k('Sözleşme teklifi', M.TEST.sozlesmeTeklif, 'Program sekmesinde sözleşme teklifi')}
         {k('Büyük final (bu akşam)', M.TEST.finalBaslat, 'Final bu akşam 21:00')}
+        {k('Takım kur (6 oyuncu)', M.TEST.takimHazir, 'Saha Bizim SK hazır')}
+        {k('Lig maçı bu akşam', M.TEST.ligBuAksam, 'Lig maçı 20:00')}
         {k('Günü hemen bitir', M.TEST.gunuBitir, 'Gün bitti')}
         {k('Pazar derbisine atla', M.TEST.pazaraAtla, 'Yeni güne başlayınca derbi günü')}
         {k('Derbi saatine git', M.TEST.derbiSaatine, 'Derbi birazdan başlıyor')}
