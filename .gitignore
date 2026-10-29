@@ -16,3 +16,4 @@ android/
 dist-test/
 imza/
 credentials.json
+__pycache__/
