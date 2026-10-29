@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   derle:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 240
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
