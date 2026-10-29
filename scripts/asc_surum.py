@@ -49,6 +49,8 @@ def dil_tr(locale):
 def main():
     surum = os.environ.get('SURUM') or ''
     derleme_no = os.environ.get('DERLEME') or ''
+    if not derleme_no:
+        hata('DERLEME (derleme numarası) belirtilmeli.')
     # --- Derlemeyi bekle
     build = None
     for deneme in range(60):
