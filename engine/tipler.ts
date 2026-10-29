@@ -114,7 +114,7 @@ export type OyunDurumu = {
   sehirSira: number;
   gun: number;
   dakika: number; // gün içi dakika: 540 (09:00) .. 1620 (03:00)
-  hiz: 1 | 2 | 4;
+  hiz: 1 | 2 | 4 | 8;
   duraklat: boolean;
   gunBitti: boolean; // 03:00'e gelindi, rapor bekliyor
   nakit: number;

@@ -11,6 +11,7 @@ import * as M from '../../engine/motor';
 import * as V from '../../engine/veri';
 import { SEHIRLER } from '../../engine/sehirler';
 import { R, Y, Kart, Baslik, Buton, Rozet, Cubuk } from '../ui';
+import TestPaneli from '../TestPaneli';
 
 function Besli() {
   return (
@@ -37,6 +38,7 @@ export default function PatronEkrani() {
   const tasin = M.tasinabilir(s);
   return (
     <ScrollView contentContainerStyle={st.icerik} showsVerticalScrollIndicator={false}>
+      <TestPaneli />
       <Kart>
         <View style={st.satir}>
           <Besli />

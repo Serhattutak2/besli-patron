@@ -9,6 +9,7 @@ import { useOyun } from '../context/OyunContext';
 import * as M from '../engine/motor';
 import * as V from '../engine/veri';
 import { R, Y, Cubuk } from './ui';
+import { TEST_MODU } from '../constants/ayar';
 
 export default function UstBar() {
   const { s, yap, reklamIzle } = useOyun();
@@ -29,10 +30,11 @@ export default function UstBar() {
               {s.gunBitti ? '03:00' : V.dakikaYazi(s.dakika)}
             </Y>
             <Y style={{ fontSize: 11, color: R.soluk, marginLeft: 6 }}>{M.sehir(s).ad}</Y>
+            {TEST_MODU && <Y s style={{ fontSize: 10, color: '#1A1205', backgroundColor: R.mor, borderRadius: 6, paddingHorizontal: 5, marginLeft: 6, overflow: 'hidden' }}>DENEME</Y>}
           </View>
         </View>
         <View style={st.hiz}>
-          {([0, 1, 2, 4] as const).map((h) => {
+          {((TEST_MODU ? [0, 1, 2, 4, 8] : [0, 1, 2, 4]) as (0 | 1 | 2 | 4 | 8)[]).map((h) => {
             const secili = h === 0 ? s.duraklat : !s.duraklat && s.hiz === h;
             return (
               <Pressable

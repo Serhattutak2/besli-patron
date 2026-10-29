@@ -9,6 +9,7 @@ import type { OyunDurumu, ReklamTuru } from '../engine/tipler';
 import * as M from '../engine/motor';
 import * as Kayit from '../engine/kayit';
 import { odulluGoster, gecisGoster, reklamlariBaslat } from '../services/reklam';
+import { TEST_MODU } from '../constants/ayar';
 
 export type Bildirim = { id: number; tur: string; metin: string };
 
@@ -78,7 +79,9 @@ export function OyunProvider({ children }: { children: React.ReactNode }) {
       const mevcut = ref.current;
       if (!mevcut) return;
       const r = M.tick(mevcut, dt, simdi);
-      if (r.degisti) setS(r.s);
+      let yeni = r.s;
+      if (TEST_MODU && (yeni.nakit < 50_000_000 || yeni.enerji < 100)) yeni = M.TEST.paraDoldur(yeni);
+      if (r.degisti || yeni !== r.s) setS(yeni);
     }, 400);
     return () => clearInterval(z);
   }, []);

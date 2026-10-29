@@ -709,7 +709,7 @@ export function aktifSahaSec(onceki: OyunDurumu, sahaId: string): OyunDurumu {
   s.aktifSahaId = sahaId;
   return s;
 }
-export function hizAyarla(onceki: OyunDurumu, hiz: 1 | 2 | 4): OyunDurumu {
+export function hizAyarla(onceki: OyunDurumu, hiz: 1 | 2 | 4 | 8): OyunDurumu {
   const s = kopya(onceki);
   s.hiz = hiz;
   return s;
@@ -870,7 +870,7 @@ function gunSonu(s: OyunDurumu) {
 
 export function gecisReklamiGosterilsinMi(s: OyunDurumu): boolean {
   if (s.gun < V.GECIS_REKLAM_ILK_GUN) return false;
-  if ((s.bugunReklam.__gun ?? 0) >= 2) return false;
+  if ((s.bugunReklam.__gun ?? 0) >= 3) return false;
   return s.gun - s.sonGecisReklamGun >= V.GECIS_REKLAM_ARALIK_GUN;
 }
 export function gecisReklamiGosterildi(onceki: OyunDurumu): OyunDurumu {
@@ -1097,7 +1097,7 @@ export function reklamHakki(s: OyunDurumu, tur: ReklamTuru): number {
   return Math.max(0, V.REKLAM_LIMIT[tur] - (s.bugunReklam[tur] ?? 0));
 }
 export function sponsorReklamMumkun(s: OyunDurumu) {
-  return s.sahalar.some((x) => (x.yukseltmeler.skorbord ?? 0) > 0) && reklamHakki(s, 'sponsor') > 0;
+  return reklamHakki(s, 'sponsor') > 0;
 }
 export function insaatHizlanabilir(s: OyunDurumu, sahaId: string) {
   const saha = s.sahalar.find((x) => x.id === sahaId);
@@ -1105,7 +1105,8 @@ export function insaatHizlanabilir(s: OyunDurumu, sahaId: string) {
 }
 export function sponsorOdulu(s: OyunDurumu) {
   const ekran = s.sahalar.filter((x) => (x.yukseltmeler.skorbord ?? 0) > 0).length;
-  return Math.round(700 * maliyetCarpan(s) * (1 + 0.5 * (ekran - 1)) * (1 + s.efsaneYildiz * 0.05));
+  const carpan = ekran === 0 ? 0.5 : 1 + 0.5 * (ekran - 1);
+  return Math.round(700 * maliyetCarpan(s) * carpan * (1 + s.efsaneYildiz * 0.05));
 }
 export function gununYildiziOdulu(s: OyunDurumu) {
   return Math.round(Math.min(s.bugunGelir * 0.5, 20000 * maliyetCarpan(s)));
@@ -1140,7 +1141,7 @@ export function reklamOdulu(onceki: OyunDurumu, tur: ReklamTuru, hedef?: string)
       s.nakit += m;
       s.toplamKazanc += m;
       s.tumZamanKazanc += m;
-      mesaj = `Dev ekranda sponsor reklamı döndü: +${para(m)}`;
+      mesaj = `Sponsor reklamı yayınlandı: +${para(m)}`;
       break;
     }
     case 'mahalletv': {
@@ -1211,3 +1212,86 @@ export function eskiKayittanHediye(eski: any): { nakit: number; itibar: number }
   const itibar = Math.max(0, Math.min(80, Math.round((Number(eski?.prestij) || 0) / 5)));
   return { nakit: 5000 + nakit, itibar };
 }
+
+// ---------- Deneme (test) modu ----------
+// Sadece deneme sürümünde görünen panelin kullandığı kısayollar.
+export const TEST = {
+  paraDoldur(o: OyunDurumu): OyunDurumu {
+    const s = kopya(o);
+    s.nakit = Math.max(s.nakit, 50_000_000);
+    s.enerji = V.MAKS_ENERJI;
+    return s;
+  },
+  mahalleler(o: OyunDurumu, miktar: number): OyunDurumu {
+    const s = kopya(o);
+    for (const m of Object.keys(s.mahalleKontrol)) kontrolEkle(s, m, miktar);
+    return s;
+  },
+  gunuBitir(o: OyunDurumu): OyunDurumu {
+    if (o.gunBitti) return o;
+    const s = kopya(o);
+    s.canliAn = null;
+    for (const r of s.rezervasyonlar) if (r.durum !== 'bitti') { r.durum = 'oynaniyor'; macBitir(s, r); }
+    gunSonu(s);
+    return s;
+  },
+  pazaraAtla(o: OyunDurumu): OyunDurumu {
+    let s = TEST.gunuBitir(o);
+    s = kopya(s);
+    while (V.haftaGunu(s.gun + 1) !== 0) s.gun += 1;
+    return s;
+  },
+  derbiSaatine(o: OyunDurumu): OyunDurumu {
+    if (!o.derbi) return o;
+    const s = kopya(o);
+    s.dakika = V.DERBI_SAAT * 60 - 5;
+    return s;
+  },
+  canliAn(o: OyunDurumu): OyunDurumu {
+    if (o.gunBitti) return o;
+    const s = kopya(o);
+    let r = s.rezervasyonlar.find((x) => x.durum === 'oynaniyor' && !x.derbi);
+    if (!r) {
+      const takim = sec(tumTakimlar(sehir(s)));
+      const saha = s.sahalar.find(hizmette)!;
+      r = { id: yeniId('r'), takimId: takim.id, sahaId: saha.id, saat: suankiSaat(s), fiyat: 1000, abone: false, durum: 'oynaniyor' };
+      s.rezervasyonlar.push(r);
+    }
+    for (let i = 0; i < 10 && !s.canliAn; i++) anBaslat(s, r, Date.now());
+    return s;
+  },
+  formaVer(o: OyunDurumu, adet: number): OyunDurumu {
+    const s = kopya(o);
+    for (let i = 0; i < adet; i++) formaVer(s, (i % 3) as 0 | 1 | 2);
+    return s;
+  },
+  geceRaporu(o: OyunDurumu): OyunDurumu {
+    const s = kopya(o);
+    if (s.cayOcagi === 0) s.cayOcagi = 2;
+    s.sonKapanis = Date.now() - 8 * 3.6e6;
+    return cevrimdisiHesapla(s);
+  },
+  miniHak(o: OyunDurumu): OyunDurumu {
+    const s = kopya(o);
+    s.miniOyunHak += 1;
+    return s;
+  },
+  reklamSifirla(o: OyunDurumu): OyunDurumu {
+    const s = kopya(o);
+    s.bugunReklam = {};
+    s.bugunReklamToplam = 0;
+    s.gununYildiziAlindi = false;
+    return s;
+  },
+  seriSifirla(o: OyunDurumu): OyunDurumu {
+    const s = kopya(o);
+    s.seriOdulAlindiTarih = '';
+    s.girisSerisi = (s.girisSerisi % 7) + 1;
+    return s;
+  },
+  insaatlariBitir(o: OyunDurumu): OyunDurumu {
+    const s = kopya(o);
+    for (const saha of s.sahalar) while (saha.asama < 5) { saha.insaatBitisDakika = null; insaatAsamaBitir(s, saha); }
+    return s;
+  },
+};

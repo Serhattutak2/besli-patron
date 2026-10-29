@@ -142,7 +142,7 @@ export const YUKSELTMELER: YukseltmeTanim[] = [
   { id: 'hali', ad: 'Yeni Nesil Halı', ikon: 'grid', aciklama: 'Saha kalitesinin sınırını yükseltir, fiyatı artırır.', maliyetler: [16000, 38000, 80000], enerji: 10, fiyatEki: 0.03, maksKaliteEki: 1 },
   { id: 'soyunma', ad: 'Duş ve Soyunma', ikon: 'water', aciklama: 'Takımlar her maçtan daha mutlu çıkar.', maliyetler: [14000, 34000], enerji: 8, sevgiEki: 2 },
   { id: 'tribun', ad: 'Tribün', ikon: 'people', aciklama: 'Seyirci gelir. Fiyat ve derbi geliri artar.', maliyetler: [26000, 60000, 120000], enerji: 12, fiyatEki: 0.04 },
-  { id: 'skorbord', ad: 'Dev Ekran', ikon: 'tv', aciklama: 'Maç arası sponsor reklamı yayınlayıp para kazanırsın.', maliyetler: [30000], enerji: 8, fiyatEki: 0.02 },
+  { id: 'skorbord', ad: 'Dev Ekran', ikon: 'tv', aciklama: 'Sponsor reklamları iki kat para getirir.', maliyetler: [30000], enerji: 8, fiyatEki: 0.02 },
   { id: 'isitici', ad: 'Saha Isıtıcısı', ikon: 'flame', aciklama: 'Yağmur ve karda müşteri kaçmaz.', maliyetler: [20000, 45000], enerji: 8 },
   { id: 'kamera', ad: 'Güvenlik Kamerası', ikon: 'videocam', aciklama: 'Hırsızlık olayı çıkmaz, kötü olaylar azalır.', maliyetler: [12000], enerji: 5 },
   { id: 'otopark', ad: 'Otopark', ikon: 'car', aciklama: 'Ofis ve kurumsal takımların talebi artar.', maliyetler: [35000], enerji: 10 },
@@ -405,19 +405,19 @@ export const SERI_ODULLERI = [
 
 // ---------- Reklamlar ----------
 export const REKLAM_LIMIT: Record<ReklamTuru, number> = {
-  gecebekci: 1,
-  caymola: 3,
-  insaat: 2,
-  sponsor: 3,
-  mahalletv: 1,
-  var: 2,
-  menajer: 2,
-  gununyildizi: 1,
-  kredi: 1,
+  gecebekci: 2,
+  caymola: 6,
+  insaat: 4,
+  sponsor: 8,
+  mahalletv: 2,
+  var: 3,
+  menajer: 4,
+  gununyildizi: 6,
+  kredi: 2,
   seri: 1,
 };
-export const GECIS_REKLAM_ARALIK_GUN = 3;
-export const GECIS_REKLAM_ILK_GUN = 4;
+export const GECIS_REKLAM_ARALIK_GUN = 2;
+export const GECIS_REKLAM_ILK_GUN = 3;
 
 // ---------- Derbi ----------
 export const DERBI_SAAT = 21;

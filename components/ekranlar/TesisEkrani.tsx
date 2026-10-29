@@ -110,7 +110,7 @@ export default function TesisEkrani() {
 
       {/* Reklam fırsatları */}
       {M.sponsorReklamMumkun(s) && (
-        <Buton tur="reklam" style={{ marginBottom: 10 }} yazi={`Dev ekranda sponsor reklamı yayınla: +${M.para(M.sponsorOdulu(s))}`} alt={`Bugün ${M.reklamHakki(s, 'sponsor')} hak kaldı`} onPress={() => reklamIzle('sponsor')} />
+        <Buton tur="reklam" style={{ marginBottom: 10 }} yazi={`${s.sahalar.some((x) => (x.yukseltmeler.skorbord ?? 0) > 0) ? 'Dev ekranda' : 'Tabelada'} sponsor reklamı yayınla: +${M.para(M.sponsorOdulu(s))}`} alt={`Bugün ${M.reklamHakki(s, 'sponsor')} hak kaldı`} onPress={() => reklamIzle('sponsor')} />
       )}
 
       {saha.asama < 5 && <InsaatKarti saha={saha} />}
