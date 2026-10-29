@@ -80,10 +80,13 @@ def main():
     dizi = sorted((s['attributes']['versionString'] for s in surumler), key=surum_anahtar)
     duzenlenebilir = [s for s in surumler if s['attributes']['appStoreState'] in ('PREPARE_FOR_SUBMISSION', 'DEVELOPER_REJECTED', 'REJECTED', 'METADATA_REJECTED', 'INVALID_BINARY')]
     canli = [s['attributes']['versionString'] for s in surumler if s['attributes']['appStoreState'] == 'READY_FOR_SALE']
-    if duzenlenebilir:
+    # Yeni sürüm, yayınlanmış/incelenmiş tüm sürümlerden büyük olmalı
+    yayinda = [s['attributes']['versionString'] for s in surumler if s not in duzenlenebilir]
+    taban = surum_buyut(max(yayinda, key=surum_anahtar)) if yayinda else '1.1.0'
+    if duzenlenebilir and surum_anahtar(duzenlenebilir[0]['attributes']['versionString']) >= surum_anahtar(taban):
         yeni_surum = duzenlenebilir[0]['attributes']['versionString']
     else:
-        yeni_surum = surum_buyut(dizi[-1]) if dizi else '1.1.0'
+        yeni_surum = taban
     bilgi(f"Mağazadaki sürüm(ler): {', '.join(dizi) or 'yok'} · canlı: {', '.join(canli) or '-'} · yeni sürüm: {yeni_surum}")
 
     derlemeler = istek('GET', f'/v1/builds?filter[app]={ASC_APP_ID}&sort=-uploadedDate&limit=50')['data']
