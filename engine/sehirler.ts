@@ -35,7 +35,12 @@ export type SehirTanim = {
     rakip: string; // rakip patron
     rakipSaha: string;
     muhtar: string;
+    cocuk: string; // mahallenin futbol aşığı çocuğu
+    gazeteci: string;
+    zabita: string;
+    hakem: string; // emekli hakem
   };
+  simge: string; // şehre özgü bir nesne (hikâyelerde geçer)
   giris: string[]; // şehre gelişte Ela'nın anlattığı kısa hikâye
   fetihMesaji: string;
   mahalleler: MahalleTanim[];
@@ -58,7 +63,12 @@ export const SEHIRLER: SehirTanim[] = [
       rakip: 'Kemal',
       rakipSaha: 'Kemal Arena',
       muhtar: 'Muhtar Necati',
+      cocuk: 'Topçu Hasan',
+      gazeteci: 'Gazeteci Necdet',
+      zabita: 'Zabıta Şükrü',
+      hakem: 'Rıfat Abi',
     },
+    simge: 'vapur',
     giris: [
       'Beşli, kramponlarını astığın gün bu tozlu arsayı devraldın.',
       'Karşı sokakta Kemal Arena ışıl ışıl. Bütün mahalle orada oynuyor.',
@@ -136,7 +146,12 @@ export const SEHIRLER: SehirTanim[] = [
       rakip: 'Cevdet Bey',
       rakipSaha: 'Cevdet Spor Tesisleri',
       muhtar: 'Muhtar Hayri',
+      cocuk: 'Minik Emre',
+      gazeteci: 'Gazeteci Halit',
+      zabita: 'Zabıta Ercan',
+      hakem: 'Ziya Hoca',
     },
+    simge: 'simit',
     giris: [
       'Başkente geldin. Burada işler protokolle yürür, maçlar mesai sonrası başlar.',
       'Cevdet Bey yirmi yıldır bu şehrin halısahalarını yönetiyor. Kimseye yer bırakmıyor.',
@@ -214,7 +229,12 @@ export const SEHIRLER: SehirTanim[] = [
       rakip: 'Ozan',
       rakipSaha: 'Kordon Spor Center',
       muhtar: 'Muhtar Sevim Hanım',
+      cocuk: 'Ufaklık Efe',
+      gazeteci: 'Gazeteci Tolga',
+      zabita: 'Zabıta Kemalettin',
+      hakem: 'Orhan Abi',
     },
+    simge: 'boyoz',
     giris: [
       'Ege\'nin incisi. Burada maç akşam serinliğinde, deniz kokusuyla oynanır.',
       'Ozan, Kordon\'daki lüks tesisiyle herkesi etkilemiş. Ama mahalle sıcaklığından anlamıyor.',
@@ -292,7 +312,12 @@ export const SEHIRLER: SehirTanim[] = [
       rakip: 'Serkan',
       rakipSaha: 'Lara Resort Sahaları',
       muhtar: 'Muhtar Gülay Hanım',
+      cocuk: 'Küçük Mert',
+      gazeteci: 'Gazeteci Selçuk',
+      zabita: 'Zabıta Erdal',
+      hakem: 'Nuri Abi',
     },
+    simge: 'portakal',
     giris: [
       'Güneşin hiç batmadığı şehir. Turistler, oteller ve sıcak geceler.',
       'Serkan otellerin sahalarını kapatmış, turist takımlarını bir avuç parayla ağırlıyor.',
@@ -370,7 +395,12 @@ export const SEHIRLER: SehirTanim[] = [
       rakip: 'Cemal Reis',
       rakipSaha: 'Reis Halısaha',
       muhtar: 'Muhtar Fadime Hanım',
+      cocuk: 'Küçük İsmail',
+      gazeteci: 'Gazeteci Hamdi',
+      zabita: 'Zabıta Recep',
+      hakem: 'Yaşar Hoca',
     },
+    simge: 'hamsi',
     giris: [
       'Karadeniz! Yağmur yağsa da kar yağsa da maç oynanır burada.',
       'Cemal Reis sahasını sandığı gibi korur, yabancıya kolay kolay yer vermez.',
@@ -448,7 +478,12 @@ export const SEHIRLER: SehirTanim[] = [
       rakip: 'Klaus',
       rakipSaha: 'Klaus Soccerhalle',
       muhtar: 'Dernek Başkanı Nuri',
+      cocuk: 'Küçük Can',
+      gazeteci: 'Gazeteci Cem',
+      zabita: 'Memur Herr Schulz',
+      hakem: 'Ali Rıza Abi',
     },
+    simge: 'döner',
     giris: [
       'Gurbetin kalbi Berlin. Kreuzberg\'de çay kokusu, Neukölln\'de mahalle maçı.',
       'Klaus\'un kapalı salonları düzenli ama ruhsuz. Gurbetçiler memleket havası arıyor.',
@@ -526,7 +561,12 @@ export const SEHIRLER: SehirTanim[] = [
       rakip: 'Mr. Whitfield',
       rakipSaha: 'Whitfield Five-a-side',
       muhtar: 'Dernek Başkanı Ayşe Hanım',
+      cocuk: 'Küçük Arda',
+      gazeteci: 'Gazeteci Mehmet Ali',
+      zabita: 'Görevli Mr. Brown',
+      hakem: 'Kıbrıslı Hüseyin',
     },
+    simge: 'şemsiye',
     giris: [
       'Futbolun anavatanı Londra. Yağmur hiç durmaz, maç hiç durmaz.',
       'Mr. Whitfield\'ın sahaları zincir mağaza gibi: her yerde aynı, hiçbirinde ruh yok.',
@@ -604,7 +644,12 @@ export const SEHIRLER: SehirTanim[] = [
       rakip: 'Şeyh Faris',
       rakipSaha: 'Faris Sports City',
       muhtar: 'İş Konseyi Başkanı Leyla Hanım',
+      cocuk: 'Küçük Omar',
+      gazeteci: 'Gazeteci Kerem',
+      zabita: 'Müfettiş Saeed',
+      hakem: 'Tarık Abi',
     },
+    simge: 'hurma',
     giris: [
       'Çölün ortasında gökdelenler. Gündüz 45 derece, maç ancak gece başlar.',
       'Şeyh Faris\'in sahaları altın kaplama. Ama kimse orada kendini evinde hissetmiyor.',

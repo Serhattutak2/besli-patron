@@ -11,11 +11,18 @@ import * as M from '../engine/motor';
 import * as V from '../engine/veri';
 import { R, Y, Buton, Kart, Ela, Cubuk, Rozet } from './ui';
 import { denemeReklamDinle } from '../services/reklam';
+import AnCizimi from './AnCizimi';
+import BeceriOyunu from './BeceriOyunu';
+import type { MiniOyunTuru, AnEtki } from '../engine/anlar';
 
 function Perde({ children, ust }: { children: React.ReactNode; ust?: boolean }) {
   return (
     <View style={[st.perde, ust && { justifyContent: 'flex-start', paddingTop: 90 }]}>
-      <View style={st.pencere}>{children}</View>
+      <View style={st.pencere}>
+        <ScrollView bounces={false} showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 18 }}>
+          {children}
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -24,46 +31,95 @@ function Perde({ children, ust }: { children: React.ReactNode; ust?: boolean }) 
 export function CanliAnPenceresi() {
   const { s, yap } = useOyun();
   const [simdi, setSimdi] = useState(Date.now());
+  const [oyun, setOyun] = useState<null | { i: number; tur: MiniOyunTuru }>(null);
+  const [gen, setGen] = useState(0);
   useEffect(() => {
+    setOyun(null);
     if (!s?.canliAn) return;
     const z = setInterval(() => setSimdi(Date.now()), 100);
     return () => clearInterval(z);
   }, [s?.canliAn?.id]);
   if (!s?.canliAn) return null;
-  const an = M.anTanim(s)!;
+  const an = M.anTanim(s);
+  if (!an) return null;
   const kalan = Math.max(0, s.canliAn.bitisZamani - simdi);
+  const toplam = an.nadir ? 16000 : 12000;
+  const altin = !!an.nadir;
+  const kim = an.kim ? karakterAdi(s, an.kim) : null;
   return (
     <Perde>
+      <View style={altin ? { borderRadius: 16, borderWidth: 2, borderColor: R.sari, padding: 2, marginBottom: 8 } : { marginBottom: 8 }}>
+        <View onLayout={(e) => setGen(e.nativeEvent.layout.width)} style={{ borderRadius: 14, overflow: 'hidden' }}>
+          {gen > 0 && <AnCizimi sahne={an.sahne} genislik={gen} />}
+        </View>
+      </View>
       <View style={st.satir}>
-        <View style={[st.anIkon, { backgroundColor: an.kotu ? R.kirmiziKoyu : '#14532D' }]}>
-          <Ionicons name={an.kotu ? 'alert' : 'sparkles'} size={20} color={an.kotu ? '#FCA5A5' : '#86EFAC'} />
+        <View style={[st.anIkon, { backgroundColor: altin ? '#78350F' : an.kotu ? R.kirmiziKoyu : '#14532D' }]}>
+          <Ionicons name={altin ? 'star' : an.kotu ? 'alert' : 'sparkles'} size={20} color={altin ? R.sari : an.kotu ? '#FCA5A5' : '#86EFAC'} />
         </View>
         <View style={{ flex: 1, marginLeft: 10 }}>
-          <Y style={{ fontSize: 11, color: R.soluk }}>CANLI · {M.takimAdi(s, s.canliAn.takimId)}</Y>
-          <Y s style={{ fontSize: 18 }}>{an.baslik}</Y>
+          <Y style={{ fontSize: 11, color: altin ? R.sari : R.soluk }}>
+            {altin ? 'ALTIN AN · ' : an.takip ? 'HİKÂYE DEVAM EDİYOR · ' : 'CANLI · '}
+            {kim ?? (s.canliAn.takimId ? M.takimAdi(s, s.canliAn.takimId) : M.sehir(s).ad)}
+          </Y>
+          <Y s style={{ fontSize: 18, color: altin ? R.sari : R.yazi }}>{an.baslik}</Y>
         </View>
       </View>
-      <Y style={{ color: R.yazi2, marginTop: 10, lineHeight: 20 }}>{an.metin}</Y>
-      <View style={{ marginVertical: 12 }}>
-        <Cubuk oran={kalan / 12000} renk={kalan < 4000 ? R.kirmizi : R.turuncu} yukseklik={6} />
-        <Y style={{ fontSize: 11, color: R.soluk, marginTop: 4 }}>{Math.ceil(kalan / 1000)} saniye içinde karar ver</Y>
-      </View>
-      {an.secenekler.map((sc, i) => (
-        <Pressable key={i} style={({ pressed }) => [st.secenek, pressed && { backgroundColor: R.kart2 }]} onPress={() => yap((d) => M.anCevapla(d, i))}>
-          <Y k style={{ fontSize: 14.5 }}>{sc.yazi}</Y>
-          <Y style={{ fontSize: 11.5, color: R.soluk, marginTop: 3 }}>{etkiYazi(sc.etki, M.maliyetCarpan(s))}</Y>
-        </Pressable>
-      ))}
+      <Y style={{ color: R.yazi2, marginTop: 8, lineHeight: 20 }}>{an.metin}</Y>
+      {oyun ? (
+        <View style={{ marginTop: 12 }}>
+          <BeceriOyunu
+            tur={oyun.tur}
+            hirsiz={an.sahne === 'hirsiz'}
+            onBitti={(ok) => {
+              const i = oyun.i;
+              setOyun(null);
+              yap((d) => M.anCevapla(d, i, ok));
+            }}
+          />
+        </View>
+      ) : (
+        <>
+          <View style={{ marginVertical: 10 }}>
+            <Cubuk oran={kalan / toplam} renk={kalan < 4000 ? R.kirmizi : altin ? R.sari : R.turuncu} yukseklik={6} />
+            <Y style={{ fontSize: 11, color: R.soluk, marginTop: 4 }}>{Math.ceil(kalan / 1000)} saniye içinde karar ver</Y>
+          </View>
+          {an.secenekler.map((sc, i) => (
+            <Pressable
+              key={i}
+              style={({ pressed }) => [st.secenek, sc.oyun && { borderColor: R.mor }, pressed && { backgroundColor: R.kart2 }]}
+              onPress={() => {
+                if (sc.oyun) {
+                  yap((d) => M.anSureUzat(d, 60000));
+                  setOyun({ i, tur: sc.oyun });
+                } else yap((d) => M.anCevapla(d, i));
+              }}
+            >
+              <View style={st.satir}>
+                {sc.oyun && <Ionicons name="game-controller" size={15} color={R.mor} style={{ marginRight: 6 }} />}
+                <Y k style={{ fontSize: 14.5, flex: 1 }}>{sc.yazi}</Y>
+              </View>
+              <Y style={{ fontSize: 11.5, color: R.soluk, marginTop: 3 }}>{sc.oyun ? `Başarırsan: ${etkiYazi(sc.etki, M.maliyetCarpan(s))}` : etkiYazi(sc.etki, M.maliyetCarpan(s))}</Y>
+            </Pressable>
+          ))}
+        </>
+      )}
     </Perde>
   );
 }
-function etkiYazi(e: V.AnEtki, c: number): string {
+function karakterAdi(s: NonNullable<ReturnType<typeof useOyun>['s']>, kim: string): string {
+  const k = M.sehir(s).karakter as Record<string, string>;
+  return k[kim] ?? '';
+}
+function etkiYazi(e: AnEtki, c: number): string {
   const p: string[] = [];
   if (e.nakit) p.push(`${e.nakit > 0 ? '+' : ''}${M.para(e.nakit * c)}`);
   if (e.sevgi) p.push(`${e.sevgi > 0 ? '+' : ''}${e.sevgi} sevgi`);
   if (e.itibar) p.push(`${e.itibar > 0 ? '+' : ''}${e.itibar} itibar`);
   if (e.kontrol) p.push(`${e.kontrol > 0 ? '+' : ''}${e.kontrol} mahalle`);
   if (e.enerji) p.push(`${e.enerji} enerji`);
+  if (e.forma != null) p.push(e.forma === 2 ? 'efsane forma' : 'forma');
+  if (e.zincir) p.push('hikâye devam edecek…');
   return p.join(' · ') || 'Bakalım ne olacak';
 }
 
@@ -311,7 +367,7 @@ export function DenemeReklam() {
 
 const st = StyleSheet.create({
   perde: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(3,7,18,0.78)', justifyContent: 'center', alignItems: 'center', padding: 18, zIndex: 50 },
-  pencere: { width: '100%', maxWidth: 440, backgroundColor: R.panel, borderRadius: 22, padding: 18, borderWidth: 1.5, borderColor: R.cizgi, maxHeight: '92%' },
+  pencere: { width: '100%', maxWidth: 440, backgroundColor: R.panel, borderRadius: 22, overflow: 'hidden', borderWidth: 1.5, borderColor: R.cizgi, maxHeight: '92%' },
   satir: { flexDirection: 'row', alignItems: 'center' },
   anIkon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   secenek: { backgroundColor: R.kart, borderRadius: 14, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: R.cizgi },

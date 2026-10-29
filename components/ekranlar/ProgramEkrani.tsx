@@ -125,10 +125,15 @@ function TeklifKarti({ t }: { t: Teklif }) {
           </View>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Y s style={{ fontSize: 16, color: R.yesil }}>{M.para(t.fiyat)}</Y>
+          <Y s style={{ fontSize: 16, color: R.yesil }}>{t.fiyat === 0 ? 'Bağış' : M.para(t.fiyat)}</Y>
           <Y k style={{ fontSize: 12, color: R.sari }}>{V.saatYazi(t.saat)}</Y>
         </View>
       </View>
+      {t.ozel && (
+        <View style={{ marginTop: 6 }}>
+          <Rozet yazi={t.ozel === 'dugun' ? 'DÜĞÜN MAÇI · 3 kat ücret' : 'HAYIR MAÇI · ücretsiz, +12 itibar, tüm mahallelere +3'} renk={t.ozel === 'dugun' ? R.pembe : R.kirmizi} ikon={t.ozel === 'dugun' ? 'musical-notes' : 'heart'} />
+        </View>
+      )}
       {t.not && <Y style={{ fontSize: 11.5, color: R.soluk, marginTop: 6, fontStyle: 'italic' }}>"{t.not}"</Y>}
       <View style={{ marginTop: 8 }}>
         <Cubuk oran={kalan / V.TEKLIF_GECERLILIK_DK} renk={kalan < 30 ? R.kirmizi : R.mat} yukseklik={4} />

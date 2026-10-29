@@ -73,7 +73,7 @@ function gokRengi(saat: number): [string, string] {
 const geceMi = (saat: number) => saat >= 20.5;
 
 // ---------- Şehir silueti ----------
-function Siluet({ sehirId, gece }: { sehirId: string; gece: boolean }) {
+function Siluet({ sehirId, gece, kare = 0 }: { sehirId: string; gece: boolean; kare?: number }) {
   const renk = gece ? '#0D1330' : '#5B7A99';
   const pencere = gece ? '#FCD34D' : '#93B4CF';
   const binalar: { x: number; w: number; h: number }[] = [];
@@ -118,7 +118,7 @@ function Siluet({ sehirId, gece }: { sehirId: string; gece: boolean }) {
           <Rect x={b.x} y={taban - b.h} width={b.w} height={b.h} fill={renk} opacity={0.85} />
           {gece &&
             Array.from({ length: Math.floor(b.h / 9) }).map((_, j) =>
-              (i * 7 + j * 3) % 4 === 0 ? <Rect key={j} x={b.x + 4} y={taban - b.h + 4 + j * 9} width="3" height="3" fill={pencere} opacity={0.8} /> : null,
+              (i * 7 + j * 3 + Math.floor(kare / 60) * (j % 2)) % 4 === 0 ? <Rect key={j} x={b.x + 4} y={taban - b.h + 4 + j * 9} width="3" height="3" fill={pencere} opacity={0.8} /> : null,
             )}
         </G>
       ))}
@@ -129,7 +129,7 @@ function Siluet({ sehirId, gece }: { sehirId: string; gece: boolean }) {
 
 // ---------- Maç simülasyonu (görsel) ----------
 type Oyuncu = { x: number; y: number; hx: number; hy: number; takim: 0 | 1; kaleci: boolean };
-type Mac = { o: Oyuncu[]; top: { x: number; y: number; vx: number; vy: number }; sahip: number; skor: [number, number]; gol: number; tick: number };
+type Mac = { o: Oyuncu[]; top: { x: number; y: number; vx: number; vy: number }; sahip: number; skor: [number, number]; gol: number; tick: number; golAtan: 0 | 1 };
 const sinir = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 function yeniMac(): Mac {
   const yer: [number, number, boolean][] = [[0.5, 0.06, true], [0.28, 0.24, false], [0.72, 0.24, false], [0.38, 0.42, false], [0.62, 0.42, false]];
@@ -139,7 +139,7 @@ function yeniMac(): Mac {
       const hv = takim === 0 ? v : 1 - v;
       o.push({ x: u, y: hv, hx: u, hy: hv, takim, kaleci: k });
     }
-  return { o, top: { x: 0.5, y: 0.5, vx: 0, vy: 0 }, sahip: -1, skor: [0, 0], gol: 0, tick: 0 };
+  return { o, top: { x: 0.5, y: 0.5, vx: 0, vy: 0 }, sahip: -1, skor: [0, 0], gol: 0, tick: 0, golAtan: 0 };
 }
 function macAdim(m: Mac): Mac {
   const o = m.o.map((p) => ({ ...p }));
@@ -147,8 +147,15 @@ function macAdim(m: Mac): Mac {
   let { sahip, skor, gol } = m;
   if (gol > 0) {
     gol -= 1;
-    o.forEach((p) => { p.x += (p.hx - p.x) * 0.12; p.y += (p.hy - p.y) * 0.12; });
-    return { o, top: { x: 0.5, y: 0.5, vx: 0, vy: 0 }, sahip: -1, skor, gol, tick: m.tick + 1 };
+    const koseY = m.golAtan === 0 ? 0.9 : 0.1;
+    o.forEach((p) => {
+      // gol atan takım köşe bayrağına koşup sevinir, diğerleri yerine döner
+      const hx = gol > 8 && p.takim === m.golAtan && !p.kaleci ? 0.9 : p.hx;
+      const hy = gol > 8 && p.takim === m.golAtan && !p.kaleci ? koseY : p.hy;
+      p.x += (hx - p.x) * 0.14;
+      p.y += (hy - p.y) * 0.14;
+    });
+    return { o, top: gol > 8 ? m.top : { x: 0.5, y: 0.5, vx: 0, vy: 0 }, sahip: -1, skor, gol, tick: m.tick + 1, golAtan: m.golAtan };
   }
   if (sahip < 0) {
     top.x += top.vx; top.y += top.vy; top.vx *= 0.92; top.vy *= 0.92;
@@ -157,7 +164,7 @@ function macAdim(m: Mac): Mac {
     if (top.y <= 0.01 || top.y >= 0.99) {
       if (top.x > 0.42 && top.x < 0.58) {
         skor = top.y >= 0.99 ? [skor[0] + 1, skor[1]] : [skor[0], skor[1] + 1];
-        return { o, top: { x: 0.5, y: 0.5, vx: 0, vy: 0 }, sahip: -1, skor, gol: 24, tick: m.tick + 1 };
+        return { o, top: { x: top.x, y: sinir(top.y, 0, 1), vx: 0, vy: 0 }, sahip: -1, skor, gol: 30, tick: m.tick + 1, golAtan: top.y >= 0.99 ? 0 : 1 };
       }
       top.vy *= -1; top.y = sinir(top.y, 0.02, 0.98);
     }
@@ -186,7 +193,7 @@ function macAdim(m: Mac): Mac {
     else if (Math.random() < 0.06) { const ark = o.filter((q, j) => q.takim === p.takim && j !== sahip && !q.kaleci); const al = ark[Math.floor(Math.random() * ark.length)]; if (al) { const d = Math.hypot(al.x - p.x, al.y - p.y) || 1; top.x = p.x; top.y = p.y; top.vx = ((al.x - p.x) / d) * 0.035; top.vy = ((al.y - p.y) / d) * 0.035; sahip = -1; } }
     else { p.y = sinir(p.y + ileri * 0.009, 0.03, 0.97); p.x = sinir(p.x + (0.5 - p.x) * 0.02 + (Math.random() - 0.5) * 0.008, 0.06, 0.94); top.x = p.x; top.y = p.y + ileri * 0.025; top.vx = 0; top.vy = 0; }
   }
-  return { o, top, sahip, skor, gol, tick: m.tick + 1 };
+  return { o, top, sahip, skor, gol, tick: m.tick + 1, golAtan: m.golAtan };
 }
 
 // ---------- Bileşen ----------
@@ -205,7 +212,7 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
     }
   }, [aktifRez?.id]);
 
-  const hareketli = !kucuk && (oynuyor || durum.hava === 'yagmur' || durum.hava === 'kar' || durum.cayOcagi > 0);
+  const hareketli = !kucuk;
   useEffect(() => {
     if (!hareketli) return;
     const z = setInterval(() => {
@@ -226,6 +233,22 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
   const tribun = saha.yukseltmeler.tribun ?? 0;
   const takimRenk = aktifRez && !aktifRez.takimId.startsWith('misafir:') ? TAKIM_TIPLERI[M.takimBul(durum, aktifRez.takimId)?.tip ?? 'amator'].renk : '#F59E0B';
   const sponsorlar = useMemo(() => ['ÇAY OCAĞI', 'MAHALLE TV', 'SAHA BİZİM', 'GECE LİGİ'], []);
+  const rakipRenk = useMemo(() => {
+    const id = aktifRez?.id ?? 'x';
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 997;
+    const renkler = ['#F8FAFC', '#3B82F6', '#111827', '#DC2626', '#7C3AED', '#0D9488'];
+    const r = renkler[h % renkler.length];
+    return r === takimRenk ? '#F8FAFC' : r;
+  }, [aktifRez?.id, takimRenk]);
+  // gol anında kamera kaleye yaklaşır
+  const zoom = oynuyor && mac.gol > 0 ? 1 - 0.36 * Math.min(1, (30 - mac.gol) / 5, mac.gol / 8) : 1;
+  const golNokta = P(0.5, mac.golAtan === 0 ? 1 : 0);
+  const vbW = VW * zoom;
+  const vbH = VH * zoom;
+  const vbX = Math.max(0, Math.min(VW - vbW, golNokta.x - vbW / 2));
+  const vbY = Math.max(0, Math.min(VH - vbH, golNokta.y - vbH / 2));
+  const derbiKutlama = !!durum.derbi?.sonuc && gece && durum.dakika < (21 + 3) * 60;
 
   const yildizlar = useMemo(() => Array.from({ length: 28 }, (_, i) => ({ x: (i * 97) % VW, y: (i * 53) % 90 + 4, r: (i % 3) * 0.4 + 0.5 })), []);
   const damlalar = useMemo(() => Array.from({ length: 46 }, (_, i) => ({ x: (i * 73) % VW, y: (i * 131) % VH, h: 8 + (i % 5) * 2 })), []);
@@ -233,7 +256,7 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
   return (
     <View onLayout={(e: LayoutChangeEvent) => setGen(e.nativeEvent.layout.width)} style={{ width: '100%' }}>
       {gen > 0 && (
-        <Svg width={gen} height={(gen * VH) / VW} viewBox={`0 0 ${VW} ${VH}`}>
+        <Svg width={gen} height={(gen * VH) / VW} viewBox={`${vbX.toFixed(1)} ${vbY.toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}`}>
           <Defs>
             <LinearGradient id="gok" x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0" stopColor={ust} />
@@ -274,10 +297,32 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
             </G>
           )}
 
-          <Siluet sehirId={durum.sehirId} gece={gece} />
+          <Siluet sehirId={durum.sehirId} gece={gece} kare={kare} />
+
+          {/* Kuşlar */}
+          {!gece && durum.hava !== 'yagmur' &&
+            [0, 1, 2].map((i) => {
+              const x = ((kare * 1.1 + i * 140) % 440) - 40;
+              const y = 34 + i * 9 + Math.sin((kare + i * 20) / 10) * 3;
+              const k = Math.sin((kare + i * 5) / 2) * 3;
+              return <Path key={i} d={`M${x - 6} ${y - k} Q${x - 3} ${y - 2} ${x} ${y} Q${x + 3} ${y - 2} ${x + 6} ${y - k}`} stroke="#1E293B" strokeWidth="1.2" fill="none" />;
+            })}
 
           {/* Zemin */}
           <Rect x="0" y="108" width={VW} height={VH - 108} fill="url(#zemin)" />
+          {/* Arka yol ve arabalar */}
+          <Rect x="0" y="108" width={VW} height="8" fill={gece ? '#1E293B' : '#64748B'} />
+          {[0, 1, 2].map((i) => {
+            const yon = i % 2 === 0 ? 1 : -1;
+            const x = yon > 0 ? ((kare * (1.6 + i * 0.4) + i * 150) % 460) - 50 : 410 - ((kare * (1.4 + i * 0.3) + i * 120) % 460);
+            const renk = ['#EF4444', '#F8FAFC', '#3B82F6'][i];
+            return (
+              <G key={i}>
+                <Rect x={x} y={108.5 + (yon > 0 ? 0 : 3)} width="14" height="4.5" rx="1.5" fill={renk} />
+                {gece && <Path d={`M${yon > 0 ? x + 14 : x} ${110.5 + (yon > 0 ? 0 : 3)} l${yon * 18} -3 v6 z`} fill="#FEF3C7" opacity={0.45} />}
+              </G>
+            );
+          })}
 
           {/* Tribün */}
           {M.hizmette(saha) && tribun > 0 && (
@@ -405,22 +450,97 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
           {oynuyor &&
             [...mac.o.map((p, i) => ({ p, i }))].sort((a, b) => a.p.y - b.p.y).map(({ p, i }) => {
               const q = P(p.x, p.y);
-              const olcek = 0.75 + p.y * 0.5;
-              const renk = p.kaleci ? '#22C55E' : p.takim === 0 ? takimRenk : '#F8FAFC';
-              const bacak = Math.sin((kare + i * 3) / 1.6) * 2.2 * olcek;
+              const olcek = (0.75 + p.y * 0.5) * 1.4;
+              const renk = p.kaleci ? '#22C55E' : p.takim === 0 ? takimRenk : rakipRenk;
+              const kosuyor = mac.gol === 0 || p.takim === mac.golAtan;
+              const bacak = kosuyor ? Math.sin((kare + i * 3) / 1.6) * 2.2 * olcek : 0;
+              const sevinc = mac.gol > 8 && p.takim === mac.golAtan && !p.kaleci;
+              const ten = ['#F1C27D', '#C68642', '#E0AC69', '#8D5524', '#FFDBAC'][i % 5];
+              const sac = ['#2B1B10', '#111827', '#78350F', '#A16207', '#4B5563'][(i * 3) % 5];
+              const numaraRenk = renk === '#F8FAFC' || renk === '#FCD34D' ? '#111827' : '#FFFFFF';
               return (
                 <G key={i}>
                   <Ellipse cx={q.x} cy={q.y + 1} rx={4 * olcek} ry={1.6 * olcek} fill="rgba(0,0,0,0.3)" />
-                  <Line x1={q.x - 1.2 * olcek} y1={q.y - 3 * olcek} x2={q.x - 1.2 * olcek + bacak} y2={q.y} stroke="#1F2937" strokeWidth={1.4 * olcek} />
-                  <Line x1={q.x + 1.2 * olcek} y1={q.y - 3 * olcek} x2={q.x + 1.2 * olcek - bacak} y2={q.y} stroke="#1F2937" strokeWidth={1.4 * olcek} />
+                  <Line x1={q.x - 1.2 * olcek} y1={q.y - 3 * olcek} x2={q.x - 1.2 * olcek + bacak} y2={q.y} stroke="#1F2937" strokeWidth={1.5 * olcek} strokeLinecap="round" />
+                  <Line x1={q.x + 1.2 * olcek} y1={q.y - 3 * olcek} x2={q.x + 1.2 * olcek - bacak} y2={q.y} stroke="#1F2937" strokeWidth={1.5 * olcek} strokeLinecap="round" />
+                  {sevinc && (
+                    <G>
+                      <Line x1={q.x - 2.6 * olcek} y1={q.y - 8 * olcek} x2={q.x - 4.5 * olcek} y2={q.y - 13 * olcek} stroke={ten} strokeWidth={1.3 * olcek} strokeLinecap="round" />
+                      <Line x1={q.x + 2.6 * olcek} y1={q.y - 8 * olcek} x2={q.x + 4.5 * olcek} y2={q.y - 13 * olcek} stroke={ten} strokeWidth={1.3 * olcek} strokeLinecap="round" />
+                    </G>
+                  )}
                   <Rect x={q.x - 3 * olcek} y={q.y - 9 * olcek} width={6 * olcek} height={6.5 * olcek} rx={1.5 * olcek} fill={renk} stroke="rgba(0,0,0,0.35)" strokeWidth="0.6" />
-                  <Circle cx={q.x} cy={q.y - 11.2 * olcek} r={2.4 * olcek} fill={['#F1C27D', '#C68642', '#E0AC69', '#8D5524'][i % 4]} />
+                  {!p.kaleci && (
+                    <SvgText x={q.x} y={q.y - 4.6 * olcek} fontSize={3.4 * olcek} fontWeight="bold" fill={numaraRenk} textAnchor="middle">
+                      {[7, 10, 4, 9, 11][i % 5]}
+                    </SvgText>
+                  )}
+                  <Circle cx={q.x} cy={q.y - 11.2 * olcek} r={2.4 * olcek} fill={ten} />
+                  <Path d={`M${q.x - 2.4 * olcek} ${q.y - 11.6 * olcek} Q${q.x} ${q.y - 15 * olcek} ${q.x + 2.4 * olcek} ${q.y - 11.6 * olcek} Z`} fill={sac} />
                 </G>
               );
             })}
           {oynuyor && (() => {
             const q = P(mac.top.x, mac.top.y);
-            return <Circle cx={q.x} cy={q.y - 1.5} r={2.2 + mac.top.y} fill="#FFFFFF" stroke="#111827" strokeWidth="0.6" />;
+            const r = (2.2 + mac.top.y) * 1.25;
+            return (
+              <G>
+                <Ellipse cx={q.x} cy={q.y + 0.5} rx={r} ry={r * 0.4} fill="rgba(0,0,0,0.3)" />
+                <Circle cx={q.x} cy={q.y - 1.8} r={r} fill="#FFFFFF" stroke="#111827" strokeWidth="0.6" />
+                <Circle cx={q.x - r * 0.2} cy={q.y - 1.8 - r * 0.2} r={r * 0.35} fill="#111827" />
+              </G>
+            );
+          })()}
+
+          {/* Ortam karakterleri */}
+          {!kucuk && durum.cayOcagi > 0 && (() => {
+            const x = 252 + Math.sin(kare / 45) * 46;
+            const y = 257;
+            const yon = Math.cos(kare / 45) > 0 ? 1 : -1;
+            const bacak = Math.sin(kare / 2) * 1.6;
+            return (
+              <G>
+                <Line x1={x - 1.5} y1={y} x2={x - 1.5 + bacak} y2={y + 6} stroke="#1F2937" strokeWidth="1.6" />
+                <Line x1={x + 1.5} y1={y} x2={x + 1.5 - bacak} y2={y + 6} stroke="#1F2937" strokeWidth="1.6" />
+                <Rect x={x - 3.5} y={y - 8} width="7" height="9" rx="2" fill="#F8FAFC" />
+                <Circle cx={x} cy={y - 11} r="2.8" fill="#E0AC69" />
+                <Path d={`M${x - 2.8} ${y - 12} Q${x} ${y - 15} ${x + 2.8} ${y - 12} Z`} fill="#2B1B10" />
+                <Line x1={x} y1={y - 6} x2={x + yon * 7} y2={y - 8} stroke="#E0AC69" strokeWidth="1.4" />
+                <Ellipse cx={x + yon * 8} cy={y - 9} rx="5" ry="1.2" fill="#CBD5E1" />
+                {[-2, 0, 2].map((dx) => (
+                  <Rect key={dx} x={x + yon * 8 + dx - 0.8} y={y - 12} width="1.6" height="3" fill="#B45309" />
+                ))}
+              </G>
+            );
+          })()}
+          {!kucuk && gece && (() => {
+            const x = 20 + ((kare * 0.5) % 150);
+            const y = 258;
+            const bacak = Math.sin(kare / 2.4) * 1.5;
+            return (
+              <G>
+                <Path d={`M${x + 4} ${y - 6} l40 -10 v20 z`} fill="#FEF3C7" opacity={0.18} />
+                <Line x1={x - 1.5} y1={y} x2={x - 1.5 + bacak} y2={y + 6} stroke="#111827" strokeWidth="1.6" />
+                <Line x1={x + 1.5} y1={y} x2={x + 1.5 - bacak} y2={y + 6} stroke="#111827" strokeWidth="1.6" />
+                <Rect x={x - 3.5} y={y - 8} width="7" height="9" rx="2" fill="#1E3A8A" />
+                <Circle cx={x} cy={y - 11} r="2.8" fill="#C68642" />
+                <Rect x={x - 3} y={y - 15} width="6" height="2.5" fill="#1E3A8A" />
+                <Rect x={x + 3} y={y - 7} width="3" height="2" fill="#FCD34D" />
+              </G>
+            );
+          })()}
+          {!kucuk && durum.bayraklar?.kedi && (() => {
+            const x = 300 + Math.sin(kare / 70) * 22;
+            const y = 246;
+            const kuyruk = Math.sin(kare / 6) * 3;
+            return (
+              <G>
+                <Ellipse cx={x} cy={y} rx="6" ry="3.4" fill="#F59E0B" />
+                <Circle cx={x - 6} cy={y - 3} r="3" fill="#F59E0B" />
+                <Path d={`M${x - 8} ${y - 5} l0.8 -3 l1.6 2.2 M${x - 5} ${y - 5.5} l1 -2.8 l1 2.6`} fill="#F59E0B" stroke="#F59E0B" strokeWidth="1" />
+                <Path d={`M${x + 6} ${y - 1} q5 ${-3 + kuyruk} 4 -8`} stroke="#F59E0B" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+              </G>
+            );
           })()}
 
           {/* Alt şerit: soyunma, giriş, çay ocağı */}
@@ -507,18 +627,49 @@ export default function TesisSahnesi({ durum, saha, onCay, onSaha, kucuk }: Prop
               return <Circle key={i} cx={(d.x + Math.sin((kare + i) / 8) * 6) % VW} cy={y} r={1.2 + (i % 3) * 0.5} fill="#FFFFFF" opacity={0.85} />;
             })}
 
+          {/* Konfeti */}
+          {oynuyor && mac.gol > 0 &&
+            Array.from({ length: 36 }).map((_, i) => {
+              const t = 30 - mac.gol;
+              const x = golNokta.x + Math.sin(i * 12.9) * 70 + Math.sin((t + i) / 3) * 4;
+              const y = golNokta.y - 90 + ((i * 17) % 40) + t * (3 + (i % 4));
+              return <Rect key={i} x={x} y={y} width="3" height="5" fill={['#FCD34D', '#EF4444', '#22C55E', '#3B82F6', '#F472B6'][i % 5]} transform={`rotate(${(t * 20 + i * 40) % 360} ${x} ${y})`} opacity={Math.min(1, mac.gol / 8)} />;
+            })}
+          {/* Derbi havai fişekleri */}
+          {derbiKutlama &&
+            [0, 1, 2].map((i) => {
+              const dongu = (kare + i * 23) % 70;
+              if (dongu > 40) return null;
+              const cx = 70 + i * 110;
+              const cy = 26 + (i % 2) * 14;
+              const r = dongu < 10 ? 0 : (dongu - 10) * 1.1;
+              const renk = ['#FCD34D', '#F472B6', '#60A5FA'][i];
+              return (
+                <G key={i} opacity={1 - Math.max(0, dongu - 22) / 18}>
+                  {dongu < 10 ? (
+                    <Line x1={cx} y1={110 - dongu * 8} x2={cx} y2={116 - dongu * 8} stroke={renk} strokeWidth="1.5" />
+                  ) : (
+                    Array.from({ length: 12 }).map((_, k) => {
+                      const a = (k / 12) * Math.PI * 2;
+                      return <Line key={k} x1={cx + Math.cos(a) * r * 0.5} y1={cy + Math.sin(a) * r * 0.5} x2={cx + Math.cos(a) * r} y2={cy + Math.sin(a) * r} stroke={renk} strokeWidth="1.6" strokeLinecap="round" />;
+                    })
+                  )}
+                </G>
+              );
+            })}
+
           {/* Gol efekti */}
-          {oynuyor && mac.gol > 12 && (
+          {oynuyor && mac.gol > 10 && (
             <G>
-              <SvgText x="180" y="196" fontSize={28 + (24 - mac.gol)} fontWeight="bold" fill="#FCD34D" stroke="#78350F" strokeWidth="1.5" textAnchor="middle">
+              <SvgText x={vbX + vbW / 2} y={vbY + vbH * 0.42} fontSize={(30 + Math.min(14, 30 - mac.gol)) * zoom} fontWeight="bold" fill="#FCD34D" stroke="#78350F" strokeWidth={1.5 * zoom} textAnchor="middle">
                 GOOOL!
               </SvgText>
             </G>
           )}
           {oynuyor && (
             <G>
-              <Rect x="140" y="4" width="80" height="18" rx="9" fill="rgba(11,18,32,0.85)" />
-              <SvgText x="180" y="17" fontSize="11" fontWeight="bold" fill="#FCD34D" textAnchor="middle">
+              <Rect x={vbX + vbW / 2 - 40 * zoom} y={vbY + 4 * zoom} width={80 * zoom} height={18 * zoom} rx={9 * zoom} fill="rgba(11,18,32,0.85)" />
+              <SvgText x={vbX + vbW / 2} y={vbY + 17 * zoom} fontSize={11 * zoom} fontWeight="bold" fill="#FCD34D" textAnchor="middle">
                 {mac.skor[0]} - {mac.skor[1]}
               </SvgText>
             </G>

@@ -66,6 +66,8 @@ export default function TesisEkrani() {
         )}
       </View>
 
+      <TemaBandi />
+
       {/* Şu an */}
       {M.hizmette(saha) && (
         <Kart style={{ marginTop: 10 }}>
@@ -232,6 +234,8 @@ function YeniSahalar() {
 
 const st = StyleSheet.create({
   icerik: { padding: 12, paddingBottom: 30 },
+  tema: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 14, padding: 10, marginTop: 10 },
+  temaIkon: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   satir: { flexDirection: 'row', alignItems: 'center' },
   cip: { flexDirection: 'row', alignItems: 'center', backgroundColor: R.panel, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: R.cizgi },
   cipSecili: { backgroundColor: R.turuncu, borderColor: R.turuncu },
@@ -250,3 +254,21 @@ const st = StyleSheet.create({
   arsa: { flexDirection: 'row', alignItems: 'center', backgroundColor: R.kart, borderRadius: 14, padding: 10, marginBottom: 8, gap: 10 },
   arsaRenk: { width: 6, alignSelf: 'stretch', borderRadius: 3 },
 });
+
+function TemaBandi() {
+  const { s } = useOyun();
+  if (!s) return null;
+  const t = M.gunTemasi(s);
+  return (
+    <View style={[st.tema, { borderColor: t.renk + '88', backgroundColor: t.renk + '1F' }]}>
+      <View style={[st.temaIkon, { backgroundColor: t.renk + '33' }]}>
+        <Ionicons name={t.ikon as any} size={18} color={t.renk} />
+      </View>
+      <View style={{ flex: 1, marginLeft: 10 }}>
+        <Y style={{ fontSize: 10.5, color: R.soluk }}>BUGÜN · {V.GUN_ADLARI[V.haftaGunu(s.gun)].toUpperCase()}</Y>
+        <Y s style={{ fontSize: 14.5, color: t.renk }}>{t.ad}</Y>
+        <Y style={{ fontSize: 11.5, color: R.yazi2 }}>{t.aciklama}</Y>
+      </View>
+    </View>
+  );
+}

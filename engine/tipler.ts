@@ -28,12 +28,16 @@ export type Rezervasyon = {
   fiyat: number;
   abone: boolean;
   derbi?: boolean;
+  ozel?: OzelMac;
   durum: 'bekliyor' | 'oynaniyor' | 'bitti';
   skor?: [number, number];
 };
 
+export type OzelMac = 'dugun' | 'hayir';
+
 export type Teklif = {
   id: string;
+  ozel?: OzelMac;
   takimId: string;
   saat: number;
   fiyat: number;
@@ -44,9 +48,10 @@ export type Teklif = {
 export type CanliAn = {
   id: string;
   anId: string;
-  rezId: string;
+  rezId: string; // boş olabilir (sahadan bağımsız hikâye anı)
   takimId: string;
   bitisZamani: number; // gerçek zaman (ms)
+  nadir?: boolean;
 };
 
 export type TakimDurum = {
@@ -171,4 +176,8 @@ export type OyunDurumu = {
   bekleyenHikaye: string[];
   reklamTarih: string; // reklam sayaçlarının ait olduğu gerçek gün
   bekleyenOlaylar: { tur: string; metin: string }[]; // ekranda gösterilecek kısa bildirimler
+  iliski: Record<string, number>; // tanıdık karakterlerle ilişki (-100..100)
+  zincirler: { an: string; gun: number }[]; // bekleyen hikâye devamları
+  bayraklar: Record<string, boolean>; // kalıcı hatıralar
+  sonAnlar: string[]; // tekrarı önlemek için son görülen anlar
 };

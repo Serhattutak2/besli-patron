@@ -18,6 +18,7 @@ import type {
 import { SEHIRLER, sehirBul, tumTakimlar, type SehirTanim, type TakimTanim } from './sehirler';
 import * as V from './veri';
 import { bugununEtkinligi, havaSec, tarihYazi } from './takvim';
+import { TUM_ANLAR, anBulTanim, type CanliAnTanim, type AnEtki, type KarakterId } from './anlar';
 
 export const SURUM = 1;
 const GUN_DK = 1440;
@@ -58,8 +59,17 @@ function bildir(s: OyunDurumu, tur: string, metin: string) {
 }
 function metinDoldur(s: OyunDurumu, m: string, takimId?: string) {
   const sh = sehir(s);
+  const tk = takimId && !takimId.startsWith('misafir:') ? takimBul(s, takimId) : null;
   return m
-    .replace(/\{takim\}/g, takimId ? takimAdi(s, takimId) : 'Takım')
+    .replace(/\{takim\}/g, takimId ? takimAdi(s, takimId) : 'Mahalle takımı')
+    .replace(/\{mahalle\}/g, tk ? mahalleAdi(s, tk.mahalleId) : sh.mahalleler[0].ad)
+    .replace(/\{rakipSaha\}/g, sh.karakter.rakipSaha)
+    .replace(/\{cocuk\}/g, sh.karakter.cocuk)
+    .replace(/\{gazeteci\}/g, sh.karakter.gazeteci)
+    .replace(/\{zabita\}/g, sh.karakter.zabita)
+    .replace(/\{hakem\}/g, sh.karakter.hakem)
+    .replace(/\{sehir\}/g, sh.ad)
+    .replace(/\{simge\}/g, sh.simge)
     .replace(/\{muhtar\}/g, sh.karakter.muhtar)
     .replace(/\{rakip\}/g, sh.karakter.rakip)
     .replace(/\{cayci\}/g, sh.karakter.cayci)
@@ -83,6 +93,9 @@ export function tamamlananSetler(s: OyunDurumu): number {
   }
   return Object.values(say).filter((n) => n >= 3).length;
 }
+
+// ---------- Haftanın teması ----------
+export const gunTemasi = (s: OyunDurumu): V.GunTemasi => V.GUN_TEMALARI[V.haftaGunu(s.gun)];
 
 // ---------- Saha bilgileri ----------
 export const sahaTanim = (saha: Saha) => V.SAHA_TIPLERI[saha.tip];
@@ -117,6 +130,7 @@ export function macFiyati(s: OyunDurumu, saha: Saha, tip: keyof typeof V.TAKIM_T
   f *= 1 + sahaFiyatEki(saha);
   f *= 1 + formaBonus(s, 'fiyat') / 100 + tamamlananSetler(s) * V.SET_BONUS_FIYAT;
   if (saat >= 23) f *= 1.12 * (1 + formaBonus(s, 'gecefiyat') / 100);
+  if (saat >= 22 && gunTemasi(s).geceFiyatEki) f *= 1 + gunTemasi(s).geceFiyatEki!;
   f *= 1 + s.efsaneYildiz * 0.05;
   return yuvarla50(f);
 }
@@ -226,6 +240,10 @@ export function yeniOyun(sehirSira = 0, kalici: Kalici = {}, simdi = Date.now())
     bekleyenHikaye: [`giris_${sh.id}`],
     reklamTarih: bugun,
     bekleyenOlaylar: [],
+    iliski: {},
+    zincirler: [],
+    bayraklar: {},
+    sonAnlar: [],
   };
   haber(s, `${sh.ad} macerası başladı. ${sh.karakter.rakip} seni izliyor.`, 'bilgi');
   teklifUret(s, V.ACILIS_SAATI - 1, 3);
@@ -249,6 +267,9 @@ function talepCarpani(s: OyunDurumu, saat: number, tip: keyof typeof V.TAKIM_TIP
   c *= 0.6 + saha.kalite * 0.08;
   c *= V.FIYAT_SEVIYE[saha.fiyat].talep;
   c *= etk.saatCarpan(saat);
+  const tema = gunTemasi(s);
+  if (tema.saatCarpan) c *= tema.saatCarpan(saat);
+  if (tip && tema.tipCarpan?.[tip]) c *= tema.tipCarpan[tip]!;
   if (tip && etk.tipCarpan?.[tip]) c *= etk.tipCarpan[tip]!;
   c *= havaF;
   c *= s.rakipEtki?.carpan ?? 1;
@@ -377,9 +398,10 @@ function saatBasi(s: OyunDurumu, saat: number, simdi: number) {
     }
   }
   if (anAdayi && !anAdayi.derbi) {
-    const sans = anAdayi.takimId.startsWith('misafir:') ? 0.12 : 0.24;
+    const sans = anAdayi.takimId.startsWith('misafir:') ? 0.16 : 0.3;
     if (rnd() < sans) anBaslat(s, anAdayi, simdi);
   }
+  if (!s.canliAn && saat >= 10 && saat <= 23 && rnd() < 0.4) zincirKontrol(s, simdi);
   teklifUret(s, saat);
 }
 
@@ -411,6 +433,23 @@ function macBitir(s: OyunDurumu, r: Rezervasyon) {
   }
   cayEkle(s, V.CAY_MAC_BASI * s.cayOcagi * maliyetCarpan(s));
   const itibarCarpan = 1 + formaBonus(s, 'itibar') / 100;
+  const temaItibar = gunTemasi(s).macBasiItibar ?? 0;
+  if (temaItibar) {
+    s.itibar += temaItibar * itibarCarpan;
+    s.bugunItibar += temaItibar * itibarCarpan;
+  }
+  if (r.ozel === 'hayir') {
+    s.itibar += 12 * itibarCarpan;
+    s.bugunItibar += 12 * itibarCarpan;
+    for (const m of Object.keys(s.mahalleKontrol)) kontrolEkle(s, m, 3);
+    haber(s, 'Hayır maçı bitti. Toplanan bağışlar mahalle okuluna gitti; bütün mahalleler seni konuşuyor.', 'iyi');
+    bildir(s, 'mahalle', 'Hayır maçı: +12 itibar, tüm mahallelere +3');
+    return;
+  }
+  if (r.ozel === 'dugun') {
+    s.itibar += 3 * itibarCarpan;
+    haber(s, 'Düğün maçı davul zurnayla bitti. Damat tarafı kazandı, gelin tarafı rövanş istiyor!', 'iyi');
+  }
   if (r.takimId.startsWith('misafir:')) {
     s.itibar += 0.3 * itibarCarpan;
     s.bugunItibar += 0.3 * itibarCarpan;
@@ -467,60 +506,115 @@ function kontrolEkle(s: OyunDurumu, mahalleId: string, miktar: number) {
 }
 
 // ---------- Canlı anlar ----------
+function anUygunMu(s: OyunDurumu, a: CanliAnTanim, r: Rezervasyon | null): boolean {
+  if (a.takip) return false;
+  if (a.sehir && !a.sehir.includes(s.sehirId)) return false;
+  if (s.sonAnlar.includes(a.id)) return false;
+  if (a.bayrakGerek && !s.bayraklar[a.bayrakGerek]) return false;
+  if (a.bayrakYok && s.bayraklar[a.bayrakYok]) return false;
+  const saat = r?.saat ?? suankiSaat(s);
+  const saha = r ? s.sahalar.find((x) => x.id === r.sahaId) : null;
+  const t = r && !r.takimId.startsWith('misafir:') ? takimBul(s, r.takimId) : null;
+  if (a.kosul === 'gece' && saat < 21) return false;
+  if (a.kosul === 'gunduz' && saat >= 19) return false;
+  if (a.kosul === 'yagmur' && s.hava !== 'yagmur') return false;
+  if (a.kosul === 'kameraYok' && (saha?.yukseltmeler.kamera ?? 0) > 0) return false;
+  if (a.kosul === 'amator' && t?.tip !== 'amator' && rnd() < 0.7) return false;
+  if (a.kotu && rnd() < 0.3 * (s.personel.guvenlik ?? 0)) return false;
+  return true;
+}
+function anKaydet(s: OyunDurumu, an: CanliAnTanim, r: Rezervasyon | null, simdi: number) {
+  s.canliAn = { id: yeniId('a'), anId: an.id, rezId: r?.id ?? '', takimId: r?.takimId ?? '', bitisZamani: simdi + (an.nadir ? 16000 : 12000), nadir: an.nadir };
+  s.sonAnlar = [an.id, ...s.sonAnlar].slice(0, 14);
+}
 function anBaslat(s: OyunDurumu, r: Rezervasyon, simdi: number) {
-  const saha = s.sahalar.find((x) => x.id === r.sahaId);
-  const t = r.takimId.startsWith('misafir:') ? null : takimBul(s, r.takimId);
-  const uygun = V.CANLI_ANLAR.filter((a) => {
-    if (a.kosul === 'gece' && r.saat < 21) return false;
-    if (a.kosul === 'yagmur' && s.hava !== 'yagmur') return false;
-    if (a.kosul === 'kameraYok' && (saha?.yukseltmeler.kamera ?? 0) > 0) return false;
-    if (a.kosul === 'amator' && t?.tip !== 'amator' && rnd() < 0.7) return false;
-    if (a.kotu && rnd() < 0.3 * (s.personel.guvenlik ?? 0)) return false;
-    return true;
-  });
+  // nadir altın an
+  if (rnd() < 0.035) {
+    const altin = TUM_ANLAR.filter((a) => a.nadir && anUygunMu(s, a, r));
+    if (altin.length) return anKaydet(s, sec(altin), r, simdi);
+  }
+  const uygun = TUM_ANLAR.filter((a) => !a.nadir && anUygunMu(s, a, r));
   if (uygun.length === 0) return;
-  const an = sec(uygun);
-  s.canliAn = { id: yeniId('a'), anId: an.id, rezId: r.id, takimId: r.takimId, bitisZamani: simdi + 12000 };
+  // şehre özel ve karakterli anlara daha çok ağırlık
+  const agirlik = uygun.map((a) => (a.sehir ? 2.6 : a.kim ? 1.6 : 1));
+  let top = agirlik.reduce((x, y) => x + y, 0) * rnd();
+  for (let i = 0; i < uygun.length; i++) {
+    top -= agirlik[i];
+    if (top <= 0) return anKaydet(s, uygun[i], r, simdi);
+  }
+  anKaydet(s, uygun[uygun.length - 1], r, simdi);
+}
+/** Vakti gelen hikâye devamını başlatır */
+function zincirKontrol(s: OyunDurumu, simdi: number) {
+  if (s.canliAn) return;
+  const i = s.zincirler.findIndex((z) => z.gun <= s.gun);
+  if (i < 0) return;
+  const z = s.zincirler[i];
+  const an = anBulTanim(z.an);
+  s.zincirler.splice(i, 1);
+  if (!an) return;
+  if (an.bayrakGerek && !s.bayraklar[an.bayrakGerek]) return;
+  const r = s.rezervasyonlar.find((x) => x.durum === 'oynaniyor' && !x.derbi) ?? null;
+  anKaydet(s, an, r, simdi);
 }
 
 export function anTanim(s: OyunDurumu) {
   if (!s.canliAn) return null;
-  const an = V.CANLI_ANLAR.find((a) => a.id === s.canliAn!.anId)!;
+  const an = anBulTanim(s.canliAn.anId);
+  if (!an) return null;
+  const tid = s.canliAn.takimId;
   return {
     ...an,
-    metin: metinDoldur(s, an.metin, s.canliAn.takimId),
-    secenekler: an.secenekler.map((x) => ({ ...x, yazi: metinDoldur(s, x.yazi, s.canliAn!.takimId), sonuc: metinDoldur(s, x.sonuc, s.canliAn!.takimId) })),
+    baslik: metinDoldur(s, an.baslik, tid),
+    metin: metinDoldur(s, an.metin, tid),
+    secenekler: an.secenekler.map((x) => ({ ...x, yazi: metinDoldur(s, x.yazi, tid), sonuc: metinDoldur(s, x.sonuc, tid) })),
   };
 }
 
-/** secim null = süre doldu */
-export function anCevapla(onceki: OyunDurumu, secim: number | null): OyunDurumu {
-  if (!onceki.canliAn) return onceki;
-  const s = kopya(onceki);
-  const ca = s.canliAn!;
-  const an = V.CANLI_ANLAR.find((a) => a.id === ca.anId)!;
-  const sc = secim == null ? an.sessiz : an.secenekler[secim];
-  const e = sc.etki;
+function etkiUygula(s: OyunDurumu, e: AnEtki, takimId: string, rezId: string) {
   if (e.nakit) s.nakit += e.nakit * maliyetCarpan(s);
+  if (e.nakit && e.nakit > 0) {
+    s.toplamKazanc += e.nakit * maliyetCarpan(s);
+    s.tumZamanKazanc += e.nakit * maliyetCarpan(s);
+  }
   if (e.enerji) s.enerji = sinirla(s.enerji + e.enerji, 0, V.MAKS_ENERJI);
   if (e.itibar) {
     s.itibar = Math.max(0, s.itibar + e.itibar);
     s.bugunItibar += e.itibar;
   }
-  const t = ca.takimId.startsWith('misafir:') ? null : takimBul(s, ca.takimId);
+  const t = takimId && !takimId.startsWith('misafir:') ? takimBul(s, takimId) : null;
   if (e.sevgi && t) s.takimlar[t.id].sevgi = sinirla(s.takimlar[t.id].sevgi + e.sevgi, 0, 100);
   if (e.kontrol) {
-    const m = t?.mahalleId ?? sec(Object.keys(s.mahalleKontrol));
-    kontrolEkle(s, m, e.kontrol);
+    const acik = Object.keys(s.mahalleKontrol).filter((m) => !s.mahalleSahip[m]);
+    const m = t && !s.mahalleSahip[t.mahalleId] ? t.mahalleId : acik.length ? sec(acik) : null;
+    if (m) kontrolEkle(s, m, e.kontrol);
   }
   if (e.kalite) {
-    const r = s.rezervasyonlar.find((x) => x.id === ca.rezId);
-    const saha = s.sahalar.find((x) => x.id === r?.sahaId);
-    if (saha) saha.kalite = Math.max(1, saha.kalite + e.kalite);
+    const r = s.rezervasyonlar.find((x) => x.id === rezId);
+    const saha = s.sahalar.find((x) => x.id === r?.sahaId) ?? s.sahalar.find((x) => x.id === s.aktifSahaId);
+    if (saha) saha.kalite = sinirla(saha.kalite + e.kalite, 1, maksKalite(saha));
   }
-  if (secim != null) s.istatistik.anCevap += 1;
-  bildir(s, secim == null ? 'kotu' : 'an', metinDoldur(s, sc.sonuc, ca.takimId));
+  if (e.forma != null) formaVer(s, e.forma);
+  if (e.iliski) s.iliski[e.iliski.kim] = sinirla((s.iliski[e.iliski.kim] ?? 0) + e.iliski.d, -100, 100);
+  if (e.bayrak) s.bayraklar[e.bayrak] = true;
+  if (e.zincir) s.zincirler.push({ an: e.zincir.an, gun: s.gun + e.zincir.gun });
+}
+
+/** secim null = süre doldu. basarili: seçenek bir beceri oyunuysa sonucu */
+export function anCevapla(onceki: OyunDurumu, secim: number | null, basarili = true): OyunDurumu {
+  if (!onceki.canliAn) return onceki;
+  const s = kopya(onceki);
+  const ca = s.canliAn!;
+  const an = anBulTanim(ca.anId);
   s.canliAn = null;
+  if (!an) return s;
+  const sc = secim == null ? an.sessiz : an.secenekler[secim];
+  const kullan = sc.oyun && !basarili && sc.basarisiz ? sc.basarisiz : sc;
+  etkiUygula(s, kullan.etki, ca.takimId, ca.rezId);
+  if (secim != null) s.istatistik.anCevap += 1;
+  const sonuc = metinDoldur(s, kullan.sonuc, ca.takimId);
+  bildir(s, secim == null || (sc.oyun && !basarili) ? 'kotu' : an.nadir ? 'para' : 'an', sonuc);
+  if (an.nadir || an.takip) haber(s, `${metinDoldur(s, an.baslik, ca.takimId)} ${sonuc}`, 'iyi');
   return s;
 }
 
@@ -539,7 +633,7 @@ export function teklifKabul(onceki: OyunDurumu, teklifId: string): Sonuc {
   const s = kopya(onceki);
   s.enerji -= enerji;
   s.teklifler = s.teklifler.filter((x) => x.id !== teklifId);
-  s.rezervasyonlar.push({ id: yeniId('r'), takimId: t.takimId, sahaId: saha.id, saat: t.saat, fiyat: t.fiyat, abone: false, durum: 'bekliyor' });
+  s.rezervasyonlar.push({ id: yeniId('r'), takimId: t.takimId, sahaId: saha.id, saat: t.saat, fiyat: t.fiyat, abone: false, durum: 'bekliyor', ozel: t.ozel });
   return { s, mesaj: `${takimAdi(s, t.takimId)} ${V.saatYazi(t.saat)}'da geliyor.` };
 }
 
@@ -562,7 +656,7 @@ export function fiyatAyarla(onceki: OyunDurumu, sahaId: string, seviye: FiyatSev
 }
 
 export function bakimMaliyeti(s: OyunDurumu) {
-  return Math.round(V.BAKIM_UCRET * maliyetCarpan(s));
+  return Math.round(V.BAKIM_UCRET * maliyetCarpan(s) * (1 - (gunTemasi(s).bakimIndirim ?? 0)));
 }
 export function bakimYap(onceki: OyunDurumu, sahaId: string): Sonuc {
   const saha = onceki.sahalar.find((x) => x.id === sahaId);
@@ -768,7 +862,7 @@ function derbiBitir(s: OyunDurumu, r: Rezervasyon) {
   const kaybeden = kazanan === d.evMahalle ? d.depMahalle : d.evMahalle;
   const kazTakim = kazanan === d.evMahalle ? d.evTakim : d.depTakim;
   const kayTakim = kazanan === d.evMahalle ? d.depTakim : d.evTakim;
-  const kavga = rnd() < hakem.kavgaSans;
+  const kavga = rnd() < hakem.kavgaSans * (s.bayraklar.hakem_dost ? 0.2 : 1);
   kontrolEkle(s, kazanan, 12 * (1 + formaBonus(s, 'kontrol') / 100));
   kontrolEkle(s, kaybeden, kavga ? -10 : 5);
   if (s.takimlar[kazTakim]) s.takimlar[kazTakim].sevgi = sinirla(s.takimlar[kazTakim].sevgi + 8 + ikram.sevgi, 0, 100);
@@ -792,8 +886,11 @@ export function formaVer(s: OyunDurumu, enAzNadirlik: 0 | 1 | 2): string | null 
   const r = rnd();
   let nad: 0 | 1 | 2 = r < 0.08 ? 2 : r < 0.4 ? 1 : 0;
   if (nad < enAzNadirlik) nad = enAzNadirlik;
-  let havuz = V.FORMALAR.filter((f) => !s.formalar.includes(f.id) && f.nadirlik === nad);
-  if (havuz.length === 0) havuz = V.FORMALAR.filter((f) => !s.formalar.includes(f.id) && f.nadirlik >= enAzNadirlik);
+  const uygun = (f: V.FormaTanim) => !s.formalar.includes(f.id) && (!f.sehir || f.sehir === s.sehirId);
+  // bulunduğun şehrin efsanesi biraz daha sık düşer
+  let havuz = V.FORMALAR.filter((f) => uygun(f) && f.nadirlik === nad && f.sehir && rnd() < 0.35);
+  if (havuz.length === 0) havuz = V.FORMALAR.filter((f) => uygun(f) && f.nadirlik === nad);
+  if (havuz.length === 0) havuz = V.FORMALAR.filter((f) => uygun(f) && f.nadirlik >= enAzNadirlik);
   if (havuz.length === 0) {
     s.nakit += 5000 * maliyetCarpan(s);
     return null;
@@ -919,9 +1016,22 @@ export function yeniGun(onceki: OyunDurumu, simdi = Date.now()): OyunDurumu {
   }
   if (hg === 0 && s.sahalar.some(hizmette)) derbiKur(s);
   const etk = bugununEtkinligi(new Date(simdi));
-  haber(s, `${s.gun}. gün, ${V.GUN_ADLARI[hg]}. Hava: ${V.HAVALAR[s.hava].ad}. ${etk.ad}.`, 'bilgi');
+  haber(s, `${s.gun}. gün, ${V.GUN_ADLARI[hg]}: ${gunTemasi(s).ad}. Hava: ${V.HAVALAR[s.hava].ad}.`, 'bilgi');
+  ozelTeklifler(s);
   teklifUret(s, V.ACILIS_SAATI - 1, 3);
   return s;
+}
+
+/** Tema günlerinin garanti teklifleri */
+function ozelTeklifler(s: OyunDurumu) {
+  const hg = V.haftaGunu(s.gun);
+  const ekle = (saat: number, ad: string, ozel: 'dugun' | 'hayir', carpan: number) => {
+    const saha = bosSaha(s, saat, null);
+    if (!saha) return;
+    s.teklifler.push({ id: yeniId('t'), takimId: `misafir:${ad}`, saat, fiyat: carpan === 0 ? 0 : yuvarla50(macFiyati(s, saha, 'amator', saat) * carpan), bitisDakika: saat * 60 - 30, ozel });
+  };
+  if (hg === 3) ekle(20, 'Damat ekibi - Gelin tarafı', 'dugun', 3);
+  if (hg === 6) ekle(15, 'Hayır maçı: Mahalle karması', 'hayir', 0);
 }
 
 function rakipHamlesi(s: OyunDurumu) {
@@ -1260,6 +1370,14 @@ export const TEST = {
     for (let i = 0; i < 10 && !s.canliAn; i++) anBaslat(s, r, Date.now());
     return s;
   },
+  ozelAn(o: OyunDurumu, tur: 'oyun' | 'altin' | 'sehir'): OyunDurumu {
+    if (o.gunBitti) return o;
+    const s = kopya(o);
+    const havuz = TUM_ANLAR.filter((a) => !a.takip && (tur === 'oyun' ? a.secenekler.some((x) => x.oyun) && (!a.sehir || a.sehir.includes(s.sehirId)) : tur === 'altin' ? a.nadir : a.sehir?.includes(s.sehirId)));
+    const r = s.rezervasyonlar.find((x) => x.durum === 'oynaniyor' && !x.derbi) ?? null;
+    if (havuz.length) anKaydet(s, sec(havuz), r, Date.now());
+    return s;
+  },
   formaVer(o: OyunDurumu, adet: number): OyunDurumu {
     const s = kopya(o);
     for (let i = 0; i < adet; i++) formaVer(s, (i % 3) as 0 | 1 | 2);
@@ -1295,3 +1413,11 @@ export const TEST = {
     return s;
   },
 };
+
+/** Beceri oyunu oynanırken anın süresi dolmasın */
+export function anSureUzat(onceki: OyunDurumu, ms: number): OyunDurumu {
+  if (!onceki.canliAn) return onceki;
+  const s = kopya(onceki);
+  s.canliAn!.bitisZamani = Date.now() + ms;
+  return s;
+}

@@ -36,6 +36,9 @@ export default function TestPaneli() {
         {k('Hepsini fethet', (d) => M.TEST.mahalleler(d, 100), 'Bütün mahalleler senin')}
         {k('İnşaatları bitir', M.TEST.insaatlariBitir, 'İnşaatlar tamamlandı')}
         {k('Canlı an çıkar', M.TEST.canliAn, 'Canlı an başladı')}
+        {k('Beceri oyunlu an', (d) => M.TEST.ozelAn(d, 'oyun'), 'Beceri oyunlu an')}
+        {k('Şehre özel an', (d) => M.TEST.ozelAn(d, 'sehir'), 'Şehre özel an')}
+        {k('Altın an çıkar', (d) => M.TEST.ozelAn(d, 'altin'), 'Altın an!')}
         {k('Günü hemen bitir', M.TEST.gunuBitir, 'Gün bitti')}
         {k('Pazar derbisine atla', M.TEST.pazaraAtla, 'Yeni güne başlayınca derbi günü')}
         {k('Derbi saatine git', M.TEST.derbiSaatine, 'Derbi birazdan başlıyor')}

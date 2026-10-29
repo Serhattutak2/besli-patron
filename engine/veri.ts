@@ -332,7 +332,7 @@ export const CANLI_ANLAR: CanliAnTanim[] = [
 
 // ---------- Efsane formalar ----------
 export type FormaBonus = 'fiyat' | 'gecefiyat' | 'enerji' | 'cay' | 'sevgi' | 'kontrol' | 'itibar' | 'yipranma' | 'derbi' | 'teklif';
-export type FormaTanim = { id: string; ad: string; efsane: string; nadirlik: 0 | 1 | 2; bonus: FormaBonus; deger: number; renk1: string; renk2: string; numara: number };
+export type FormaTanim = { id: string; ad: string; efsane: string; nadirlik: 0 | 1 | 2; bonus: FormaBonus; deger: number; renk1: string; renk2: string; numara: number; sehir?: string };
 
 export const BONUS_YAZI: Record<FormaBonus, (d: number) => string> = {
   fiyat: (d) => `Tüm fiyatlar +%${d}`,
@@ -347,27 +347,36 @@ export const BONUS_YAZI: Record<FormaBonus, (d: number) => string> = {
   teklif: (d) => `Teklif sayısı +%${d}`,
 };
 
-const EFSANELER: { ad: string; bonus: FormaBonus; renk1: string; renk2: string; numara: number }[] = [
+const EFSANELER: { ad: string; bonus: FormaBonus; renk1: string; renk2: string; numara: number; sehir?: string }[] = [
   { ad: 'Üç Numara Halil', bonus: 'fiyat', renk1: '#DC2626', renk2: '#FBBF24', numara: 3 },
   { ad: 'Karın Kalecisi', bonus: 'yipranma', renk1: '#E5E7EB', renk2: '#1D4ED8', numara: 1 },
   { ad: 'Gece Yarısı Golcüsü', bonus: 'gecefiyat', renk1: '#111827', renk2: '#A78BFA', numara: 9 },
   { ad: 'Topçu Nevzat', bonus: 'teklif', renk1: '#059669', renk2: '#F9FAFB', numara: 10 },
   { ad: 'Rüzgâr Sami', bonus: 'enerji', renk1: '#0EA5E9', renk2: '#F9FAFB', numara: 7 },
   { ad: 'Fırtına Necmi', bonus: 'derbi', renk1: '#7C2D12', renk2: '#38BDF8', numara: 61 },
-  { ad: 'Sol Bek Saadet', bonus: 'sevgi', renk1: '#BE185D', renk2: '#FDF2F8', numara: 3 },
+  { ad: 'Sol Bek Sadettin', bonus: 'sevgi', renk1: '#BE185D', renk2: '#FDF2F8', numara: 3 },
   { ad: 'Kafa Vuruşu Kenan', bonus: 'itibar', renk1: '#F59E0B', renk2: '#1F2937', numara: 4 },
-  { ad: 'Penaltıcı Pakize', bonus: 'fiyat', renk1: '#7C3AED', renk2: '#FDE68A', numara: 11 },
+  { ad: 'Penaltıcı Paşa', bonus: 'fiyat', renk1: '#7C3AED', renk2: '#FDE68A', numara: 11 },
   { ad: 'Dripling Doğan', bonus: 'teklif', renk1: '#16A34A', renk2: '#FDE047', numara: 17 },
   { ad: 'Taç Atışı Turgut', bonus: 'kontrol', renk1: '#1E3A8A', renk2: '#F97316', numara: 2 },
   { ad: 'Yağmur Adamı Yaşar', bonus: 'yipranma', renk1: '#334155', renk2: '#93C5FD', numara: 5 },
-  { ad: 'Çalım Cemile', bonus: 'sevgi', renk1: '#F43F5E', renk2: '#FFFFFF', numara: 8 },
+  { ad: 'Çalımcı Cemil', bonus: 'sevgi', renk1: '#F43F5E', renk2: '#FFFFFF', numara: 8 },
   { ad: 'Çelik Duvar Celal', bonus: 'kontrol', renk1: '#4B5563', renk2: '#F3F4F6', numara: 6 },
   { ad: 'Kaptan Kâmil', bonus: 'itibar', renk1: '#B91C1C', renk2: '#FFFFFF', numara: 5 },
-  { ad: 'Frikik Feride', bonus: 'cay', renk1: '#0F766E', renk2: '#FCD34D', numara: 10 },
+  { ad: 'Frikik Ferit', bonus: 'cay', renk1: '#0F766E', renk2: '#FCD34D', numara: 10 },
   { ad: 'Uzun Top Ufuk', bonus: 'derbi', renk1: '#9A3412', renk2: '#FEF3C7', numara: 23 },
   { ad: 'Ters Köşe Tarık', bonus: 'gecefiyat', renk1: '#0B1220', renk2: '#F59E0B', numara: 99 },
   { ad: 'Son Dakika Selim', bonus: 'enerji', renk1: '#047857', renk2: '#ECFDF5', numara: 90 },
   { ad: 'Çaycı Bekir', bonus: 'cay', renk1: '#78350F', renk2: '#FDE68A', numara: 12 },
+  // Şehre özel efsaneler: sadece o şehirde düşer
+  { ad: 'Boğazın Kaptanı Turan', bonus: 'fiyat', renk1: '#1E3A8A', renk2: '#FBBF24', numara: 34, sehir: 'istanbul' },
+  { ad: 'Ayaz Kalecisi Nihat', bonus: 'enerji', renk1: '#991B1B', renk2: '#F8FAFC', numara: 6, sehir: 'ankara' },
+  { ad: 'İmbat Rüzgârı Levent', bonus: 'gecefiyat', renk1: '#0EA5E9', renk2: '#FFFFFF', numara: 35, sehir: 'izmir' },
+  { ad: 'Portakal Bahçesi Hakan', bonus: 'cay', renk1: '#EA580C', renk2: '#166534', numara: 7, sehir: 'antalya' },
+  { ad: 'Fırtına Horoncu Şenol', bonus: 'derbi', renk1: '#7F1D1D', renk2: '#60A5FA', numara: 61, sehir: 'trabzon' },
+  { ad: 'Gurbetçi Mesut', bonus: 'sevgi', renk1: '#111827', renk2: '#DC2626', numara: 10, sehir: 'berlin' },
+  { ad: 'Sisli Gece Yusuf', bonus: 'kontrol', renk1: '#4B5563', renk2: '#F9FAFB', numara: 9, sehir: 'londra' },
+  { ad: 'Çöl Aslanı Rıdvan', bonus: 'teklif', renk1: '#B45309', renk2: '#FEF3C7', numara: 1, sehir: 'dubai' },
 ];
 const NADIRLIK_AD = ['Ev forması', 'Deplasman forması', 'Efsane gece forması'];
 const NADIRLIK_DEGER: Record<FormaBonus, number[]> = {
@@ -386,6 +395,7 @@ export const FORMALAR: FormaTanim[] = EFSANELER.flatMap((e, i) =>
     renk1: n === 1 ? e.renk2 : e.renk1,
     renk2: n === 1 ? e.renk1 : e.renk2,
     numara: e.numara,
+    sehir: e.sehir,
   })),
 );
 export const NADIRLIK_YAZI = ['Sıradan', 'Nadir', 'Efsane'];
@@ -443,4 +453,27 @@ export const HAVALAR: Record<string, HavaTanim> = {
   yagmur: { id: 'yagmur', ad: 'Yağmurlu', ikon: 'rainy', talep: 0.72, isiticiKoruma: true },
   kar: { id: 'kar', ad: 'Karlı', ikon: 'snow', talep: 0.55, isiticiKoruma: true },
   sicak: { id: 'sicak', ad: 'Kavurucu sıcak', ikon: 'thermometer', talep: 0.85, isiticiKoruma: false },
+};
+
+// ---------- Haftanın tema günleri ----------
+export type GunTemasi = {
+  ad: string;
+  aciklama: string;
+  ikon: string;
+  renk: string;
+  saatCarpan?: (saat: number) => number;
+  tipCarpan?: Partial<Record<string, number>>;
+  geceFiyatEki?: number;
+  bakimIndirim?: number;
+  macBasiItibar?: number;
+};
+/** 0=Pazar ... 6=Cumartesi */
+export const GUN_TEMALARI: Record<number, GunTemasi> = {
+  0: { ad: 'Derbi Pazarı', aciklama: `Akşam ${'21:00'}'de mahalle derbisi var.`, ikon: 'trophy', renk: '#F59E0B' },
+  1: { ad: 'Bakım Pazartesisi', aciklama: 'Bugün halı bakımı yarı fiyatına.', ikon: 'brush', renk: '#34D399', bakimIndirim: 0.5 },
+  2: { ad: 'Gece Ligi', aciklama: '22:00 sonrası talep ve fiyatlar yüksek.', ikon: 'moon', renk: '#A78BFA', saatCarpan: (s) => (s >= 22 ? 1.6 : 1), geceFiyatEki: 0.15 },
+  3: { ad: 'Düğün Maçı Çarşambası', aciklama: '20:00\'de damat ve gelin tarafı kapışıyor. Üç katı ücret!', ikon: 'musical-notes', renk: '#F472B6' },
+  4: { ad: 'Okullar Turnuvası', aciklama: '14:00-17:00 öğrenciler akın ediyor, her maç ekstra itibar.', ikon: 'school', renk: '#60A5FA', saatCarpan: (s) => (s >= 14 && s <= 17 ? 2 : 1), tipCarpan: { ogrenci: 2 }, macBasiItibar: 1 },
+  5: { ad: 'Şirketler Gecesi', aciklama: 'Ofis ve kurumsal takımlar akşam sahayı istiyor.', ikon: 'briefcase', renk: '#FBBF24', tipCarpan: { ofis: 1.8, kurumsal: 1.8 } },
+  6: { ad: 'Hayır Maçı Cumartesisi', aciklama: '15:00\'te hayır maçı: ücret yok ama mahalle seni bağrına basar.', ikon: 'heart', renk: '#F87171' },
 };
